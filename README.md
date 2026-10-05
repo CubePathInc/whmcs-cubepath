@@ -124,7 +124,8 @@ whmcs-cubepath/
 │   ├── composer.json           # SDK dependency and autoload (vendor/ is built, not committed)
 │   ├── lib/                    # Settings, Catalog, Products, Admin\Controller
 │   ├── lang/                   # Language files
-│   └── views/admin/            # Admin page templates
+│   ├── views/admin/            # Admin page templates
+│   └── whmcs.json, logo.png    # Metadata shown in Apps & Integrations
 │
 └── servers/cubepath/
     ├── cubepath.php             # Server module entry point
@@ -134,7 +135,8 @@ whmcs-cubepath/
     ├── controller/              # Client area controllers (8)
     ├── helper/                  # CubepathHelper, LangHelper, SessionHelper
     ├── lang/                    # Language files
-    └── template/                # Smarty templates
+    ├── template/                # Smarty templates
+    └── whmcs.json, logo.png     # Metadata shown in Apps & Integrations
 ```
 
 ## SDK Method Mapping
