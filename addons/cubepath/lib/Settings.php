@@ -49,13 +49,11 @@ class Settings
     }
 
     /**
-     * API token, decrypted. WHMCS stores "password" addon fields encrypted.
+     * API token. WHMCS stores addon "password" fields as plain text; the type only masks the input.
      */
     public static function apiToken()
     {
-        $token = self::get('apiToken');
-
-        return $token === '' ? '' : decrypt($token);
+        return trim(self::get('apiToken'));
     }
 
     public static function defaultProjectId()
