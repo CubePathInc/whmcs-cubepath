@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['7.4', '8.1', '8.2', '8.3']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate composer.json
+        run: composer validate --strict --working-dir=addons/cubepath
+
+      - name: Install dependencies
+        run: composer install --no-dev --no-interaction --no-progress --prefer-dist --working-dir=addons/cubepath
+
+      - name: Lint
+        run: |
+          find addons servers -path '*/vendor' -prune -o -name '*.php' -print0 \
+            | xargs -0 -n1 php -l > /dev/null
+
+  build:
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Build archive
+        run: bin/build-release.sh "ci-${GITHUB_SHA::7}"
