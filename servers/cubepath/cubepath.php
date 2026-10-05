@@ -18,7 +18,7 @@ require 'loader.php';
 function cubepath_MetaData()
 {
     return array(
-        'DisplayName' => 'CubePath Cloud',
+        'DisplayName' => 'CubePath Cloud VPS',
         'APIVersion' => '1.1',
     );
 }
