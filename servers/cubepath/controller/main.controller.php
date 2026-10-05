@@ -41,19 +41,19 @@ class MainController extends CubepathController
 				switch ($action)
 				{
 					case 'start':
-						$this->client->vps()->power((int) $vpsId, 'start');
+						CubepathHelper::power($this->client, $vpsId, 'start');
 						SessionHelper::setFlashMessage('success', LangHelper::T('main.index.power_start_success'));
 						$this->redirect('Main', 'index');
 						break;
 
 					case 'stop':
-						$this->client->vps()->power((int) $vpsId, 'stop');
+						CubepathHelper::power($this->client, $vpsId, 'stop');
 						SessionHelper::setFlashMessage('success', LangHelper::T('main.index.power_stop_success'));
 						$this->redirect('Main', 'index');
 						break;
 
 					case 'reboot':
-						$this->client->vps()->power((int) $vpsId, 'reboot');
+						CubepathHelper::power($this->client, $vpsId, 'reboot');
 						SessionHelper::setFlashMessage('success', LangHelper::T('main.index.power_reboot_success'));
 						$this->redirect('Main', 'index');
 						break;
@@ -90,6 +90,7 @@ class MainController extends CubepathController
 
 			// Get VPS details
 			$vps = $this->client->vps()->get((int) $vpsId);
+			$vps['ip_address'] = CubepathHelper::primaryIpv4($vps);
 
 			return array(
 				'vars' => array(

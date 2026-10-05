@@ -13,6 +13,64 @@ if (!class_exists('CubepathHelper'))
     class CubepathHelper
     {
         /**
+         * Power actions exposed by the module mapped to the API power types.
+         */
+        const POWER_ACTIONS = array(
+            'start'  => 'start_vps',
+            'stop'   => 'stop_vps',
+            'reboot' => 'restart_vps',
+        );
+
+        /**
+         * Run a power action on a VPS.
+         *
+         * @param \Cubepath\CubepathClient $client
+         * @param int                       $vpsId
+         * @param string                    $action start, stop or reboot
+         * @return array API response
+         */
+        public static function power($client, $vpsId, $action)
+        {
+            if (!isset(self::POWER_ACTIONS[$action]))
+            {
+                throw new \InvalidArgumentException('Unknown power action: ' . $action);
+            }
+
+            return $client->vps()->power((int)$vpsId, self::POWER_ACTIONS[$action]);
+        }
+
+        /**
+         * Primary IPv4 address of a VPS as returned in the project listing
+         * (floating_ips.list[] entries with address, type and is_primary).
+         *
+         * @param array $vps
+         * @return string|null
+         */
+        public static function primaryIpv4(array $vps)
+        {
+            $ips = isset($vps['floating_ips']['list']) && is_array($vps['floating_ips']['list']) ? $vps['floating_ips']['list'] : array();
+            $fallback = null;
+
+            foreach ($ips as $ip)
+            {
+                if (empty($ip['address']) || (isset($ip['type']) && $ip['type'] !== 'IPv4'))
+                {
+                    continue;
+                }
+                if (!empty($ip['is_primary']))
+                {
+                    return $ip['address'];
+                }
+                if ($fallback === null)
+                {
+                    $fallback = $ip['address'];
+                }
+            }
+
+            return $fallback;
+        }
+
+        /**
          * Get a custom field value for a given service.
          *
          * Looks up the custom field by matching the field name prefix (before the pipe character).
@@ -147,9 +205,9 @@ if (!class_exists('CubepathHelper'))
 
             if ($result && isset($result->optionname))
             {
-                // The option value may contain a pipe separator; return the part after it
-                $parts = explode('|', $result->optionname);
-                return isset($parts[1]) ? $parts[1] : $parts[0];
+                // Sub-options are named "<api value>|<label>"; WHMCS only shows the label to clients
+                $parts = explode('|', $result->optionname, 2);
+                return trim($parts[0]);
             }
 
             return null;
