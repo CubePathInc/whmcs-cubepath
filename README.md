@@ -28,7 +28,7 @@ This creates `modules/addons/cubepath/` (including `vendor/`) and `modules/serve
 ### 2. Activate the addon module
 
 1. Go to **WHMCS Admin > System Settings > Addon Modules**
-2. Find **CubePath Cloud** and click **Activate**
+2. Find **CubePath** and click **Activate**
 3. Enter your **API Token**
 4. Set the **Default Project ID** (find it in your CubePath dashboard)
 5. Grant admin access and click **Save Changes**
@@ -47,15 +47,17 @@ composer install --no-dev --working-dir=/path/to/whmcs/modules/addons/cubepath
 
 ### Addon Module (Admin Panel)
 
-Access via **WHMCS Admin > Addons > CubePath Cloud**.
+Access via **WHMCS Admin > Addons > CubePath**.
 
 | Page | Description |
 |------|-------------|
-| **Home** | Dashboard with API connection status and module info |
-| **Product Creator** | Create WHMCS products mapped to CubePath VPS plans (single or batch) |
-| **Products** | Manage existing CubePath products |
-| **Locations** | Enable/disable available datacenter regions |
-| **Templates** | Control which OS templates are visible to clients |
+| **Dashboard** | API connection status, configured project and catalog size |
+| **Product Creator** | Create a WHMCS product for one CubePath plan, or for every available plan at once |
+| **Products** | List CubePath products with their service count, and sync new locations and templates into them |
+| **Locations** | Choose which locations clients can order |
+| **Templates** | Choose which operating systems and applications clients can order |
+
+Plans, locations and templates come from the CubePath API, so new ones show up without updating the module.
 
 ### Server Module (Provisioning)
 
@@ -90,12 +92,14 @@ Self-service panel available to end clients:
 
 ### Automatic (recommended)
 
-1. Go to **Addons > CubePath Cloud > Product Creator**
-2. Click **Create** next to a plan, or use **Create All** for batch creation
-3. The module automatically sets up:
-   - Product config options (API token, plan name, project ID)
-   - Custom fields (VPS ID, IP Address, Project ID)
-   - Configurable options for location and OS template selection
+1. Go to **Addons > CubePath > Product Creator**
+2. Pick a plan, product group and price and click **Create product**, or use **Create all plans**
+3. The module sets up:
+   - Module settings: API token, plan name and project ID
+   - Admin-only custom fields: VPS ID, IP Address, Project ID
+   - Configurable options for the location and operating system, limited to the locations where the plan is in stock and the templates that fit in its memory
+
+Prices of the configurable options start at zero; adjust them from **System Settings > Configurable Options** if you want to charge for a location or template.
 
 ### Manual
 
@@ -105,7 +109,9 @@ Self-service panel available to end clients:
    - **Config Option 1**: API Token
    - **Config Option 2**: Plan name (e.g., `rz.nano`)
    - **Config Option 3**: Project ID
-4. Create configurable option groups for location and OS template
+4. Create a configurable option group linked to the product with two dropdown options:
+   - `location|Location`, with sub-options named `<location_name>|<label>`, e.g. `us-mia-1|Miami, USA`
+   - `template|Operating System`, with sub-options named `<template_name>|<label>`, e.g. `ubuntu-24|Ubuntu 24.04`
 
 ## Directory Structure
 
@@ -113,18 +119,12 @@ Self-service panel available to end clients:
 whmcs-cubepath/
 ├── bin/build-release.sh         # Builds the release zip
 ├── addons/cubepath/
-│   ├── cubepath.php            # Addon entry point
-│   ├── Addon.php               # Main driver
-│   ├── Configuration.php       # Module config
-│   ├── Loader.php              # PSR-0 autoloader
+│   ├── cubepath.php            # Addon entry point (config, activate, output)
 │   ├── hooks.php               # WHMCS hooks
-│   ├── composer.json           # SDK dependency (vendor/ is built, not committed)
-│   ├── helpers/                # ApiHelper, PathHelper, ProductsHelper
-│   ├── controllers/addon/      # Admin & client area controllers
-│   ├── models/                 # Eloquent ORM models
-│   ├── mgLibs/                 # MVC framework
-│   ├── langs/                  # Language files
-│   └── templates/              # Smarty templates
+│   ├── composer.json           # SDK dependency and autoload (vendor/ is built, not committed)
+│   ├── lib/                    # Settings, Catalog, Products, Admin\Controller
+│   ├── lang/                   # Language files
+│   └── views/admin/            # Admin page templates
 │
 └── servers/cubepath/
     ├── cubepath.php             # Server module entry point
