@@ -1,0 +1,15 @@
+# Composer dependencies are installed at build time and shipped in release archives
+/addons/cubepath/vendor/
+/composer.phar
+
+# Build output
+/dist/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local environment
+.env
