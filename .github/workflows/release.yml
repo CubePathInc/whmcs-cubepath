@@ -24,9 +24,9 @@ jobs:
       - name: Check module version matches tag
         run: |
           tag="${GITHUB_REF_NAME#v}"
-          module="$(sed -nE "s/.*public \\\$version = '([^']+)'.*/\1/p" addons/cubepath/Configuration.php)"
+          module="$(sed -nE "s/.*'CUBEPATH_ADDON_VERSION', '([^']+)'.*/\1/p" addons/cubepath/cubepath.php)"
           if [ "$tag" != "$module" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match module version $module in addons/cubepath/Configuration.php"
+            echo "::error::Tag $GITHUB_REF_NAME does not match module version $module in addons/cubepath/cubepath.php"
             exit 1
           fi
 

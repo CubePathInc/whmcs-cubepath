@@ -188,7 +188,7 @@ bin/build-release.sh v1.0.0   # writes dist/whmcs-cubepath-v1.0.0.zip
 
 ### Releasing
 
-1. Bump `$version` in `addons/cubepath/Configuration.php`
+1. Bump `CUBEPATH_ADDON_VERSION` in `addons/cubepath/cubepath.php`
 2. Merge to `main`
 3. Tag the merge commit with the same version, prefixed with `v`, and push the tag:
 
