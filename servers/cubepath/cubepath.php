@@ -18,7 +18,7 @@ require 'loader.php';
 function cubepath_MetaData()
 {
     return array(
-        'DisplayName' => 'CubePath Cloud',
+        'DisplayName' => 'CubePath Cloud VPS',
         'APIVersion' => '1.1',
     );
 }
@@ -49,9 +49,9 @@ function cubepath_ConfigOptions($params)
     {
         try
         {
-            $client = new \Cubepath\CubepathClient($apiToken);
-            // Validate connection by listing projects
-            $client->get('/projects/');
+            $client = new \Cubepath\CubepathClient($apiToken, array('timeout' => 10, 'max_retries' => 0));
+            // Validates the token and lists the projects it can create VPS in
+            $projects = $client->get('/projects/');
 
             // Config Option 2: Plan Name
             $configArray['plan_name'] = array(
@@ -61,12 +61,15 @@ function cubepath_ConfigOptions($params)
                 'Description' => 'CubePath VPS plan name (e.g., rz.nano)',
             );
 
-            // Config Option 3: Project ID
+            // Config Option 3: Project
             $configArray['project_id'] = array(
-                'FriendlyName' => 'Project ID',
-                'Type' => 'text',
-                'Size' => '10',
-                'Description' => 'Default CubePath project ID (can be overridden per service via custom field)',
+                'FriendlyName' => 'Project',
+                'Type' => 'dropdown',
+                'Options' => CubepathHelper::projectOptions(
+                    $projects,
+                    (string)CubepathHelper::getProductConfigOption($productId, 'configoption3')
+                ),
+                'Description' => 'CubePath project where VPS are created (can be overridden per service via the project_id custom field)',
             );
         }
         catch (\Exception $e)

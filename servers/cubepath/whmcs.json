@@ -1,0 +1,35 @@
+{
+    "schema": "1.0",
+    "type": "whmcs-servers",
+    "name": "cubepath",
+    "license": "MIT",
+    "category": "provisioning",
+    "description": {
+        "name": "CubePath Cloud VPS",
+        "tagline": "Sell and automatically provision CubePath cloud VPS from WHMCS.",
+        "long": "Provision CubePath cloud VPS as soon as an order is paid. The module creates the server through the CubePath API in the location and with the operating system the customer picked, stores its IP addresses on the service, and handles suspend, unsuspend and terminate. Customers manage their VPS from the client area: power actions, label and root password changes.",
+        "features": [
+            "Automatic VPS provisioning on order activation",
+            "Customer-selected location and operating system or one-click app",
+            "Suspend, unsuspend and terminate from WHMCS",
+            "Client area power controls (start, stop, reboot)",
+            "Root password and label changes from the client area",
+            "IPv4 and IPv6 addresses saved on the service"
+        ]
+    },
+    "logo": {
+        "filename": "logo.png"
+    },
+    "support": {
+        "homepage": "https://cubepath.com/",
+        "learn_more": "https://cubepath.com/",
+        "support_url": "https://my.cubepath.com/",
+        "docs_url": "https://github.com/CubePathInc/whmcs-cubepath#readme"
+    },
+    "authors": [
+        {
+            "name": "CubePath",
+            "homepage": "https://cubepath.com/"
+        }
+    ]
+}

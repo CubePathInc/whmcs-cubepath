@@ -3,6 +3,7 @@
  * @var string|null $apiError
  * @var bool        $tokenSet
  * @var string      $projectId
+ * @var string|null $project
  * @var int         $planCount
  * @var int         $locations
  * @var int         $templates
@@ -33,7 +34,7 @@ include __DIR__ . '/api_error.php';
                     <th><?= $e($t('defaultProjectId')) ?></th>
                     <td>
                         <?php if ($projectId !== ''): ?>
-                            <?= $e($projectId) ?>
+                            <?= $e($project !== null ? $project : $projectId) ?>
                         <?php else: ?>
                             <span class="text-danger"><?= $e($t('notConfigured')) ?></span>
                         <?php endif; ?>

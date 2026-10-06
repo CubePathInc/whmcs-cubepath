@@ -4,6 +4,7 @@ namespace CubePath\WHMCS\Addon\Admin;
 
 use CubePath\WHMCS\Addon\Catalog;
 use CubePath\WHMCS\Addon\Products;
+use CubePath\WHMCS\Addon\Projects;
 use CubePath\WHMCS\Addon\Settings;
 use Cubepath\CubepathClient;
 use Exception;
@@ -71,6 +72,7 @@ class Controller
             'apiError'   => $this->apiError,
             'tokenSet'   => Settings::apiToken() !== '',
             'projectId'  => Settings::defaultProjectId(),
+            'project'    => $catalog ? $this->projectName(Settings::defaultProjectId()) : null,
             'planCount'  => $catalog ? count($catalog->plans()) : 0,
             'locations'  => $catalog ? count($catalog->locations()) : 0,
             'templates'  => $catalog ? count($catalog->templates()) : 0,
@@ -333,6 +335,28 @@ class Controller
         }
 
         return $this->catalog;
+    }
+
+    /**
+     * Name of a project, or null when it cannot be looked up.
+     */
+    private function projectName($projectId)
+    {
+        if ($projectId === '')
+        {
+            return null;
+        }
+
+        try
+        {
+            $names = Projects::fetch(Settings::apiToken());
+        }
+        catch (Exception $e)
+        {
+            return null;
+        }
+
+        return isset($names[$projectId]) ? $names[$projectId] : sprintf($this->t('projectNotFound'), $projectId);
     }
 
     private function requireCatalog()
