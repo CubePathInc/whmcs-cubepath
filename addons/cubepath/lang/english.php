@@ -30,12 +30,13 @@ $_ADDONLANG['apiStatus'] = 'API status';
 $_ADDONLANG['connected'] = 'Connected';
 $_ADDONLANG['disconnected'] = 'Disconnected';
 $_ADDONLANG['apiToken'] = 'API token';
-$_ADDONLANG['defaultProjectId'] = 'Default project ID';
+$_ADDONLANG['defaultProjectId'] = 'Default project';
+$_ADDONLANG['projectNotFound'] = 'Project %s (not found)';
 $_ADDONLANG['catalog'] = 'Catalog';
 
 // Product creator
 $_ADDONLANG['creatorIntro'] = 'Each product is linked to a CubePath plan. Clients choose the location and operating system when ordering.';
-$_ADDONLANG['projectIdMissing'] = 'Set a Default Project ID in the addon configuration before creating products, or VPS cannot be provisioned.';
+$_ADDONLANG['projectIdMissing'] = 'Choose a Default Project in the addon configuration before creating products, or VPS cannot be provisioned.';
 $_ADDONLANG['noProductGroups'] = 'There are no product groups yet.';
 $_ADDONLANG['createGroup'] = 'Create one';
 $_ADDONLANG['createSingle'] = 'Create a product';

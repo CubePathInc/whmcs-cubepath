@@ -10,6 +10,7 @@
  */
 
 use CubePath\WHMCS\Addon\Admin\Controller;
+use CubePath\WHMCS\Addon\Projects;
 use CubePath\WHMCS\Addon\Settings;
 
 if (!defined('WHMCS'))
@@ -36,14 +37,45 @@ function cubepath_config()
                 'Size'         => '60',
                 'Description'  => 'CubePath API token, created from my.cubepath.com.',
             ),
-            'defaultProjectId' => array(
-                'FriendlyName' => 'Default Project ID',
-                'Type'         => 'text',
-                'Size'         => '10',
-                'Description'  => 'CubePath project where new VPS are created.',
-            ),
+            'defaultProjectId' => cubepath_project_field(),
         ),
     );
+}
+
+/**
+ * Default project setting: a dropdown of the token's projects once a token is saved.
+ *
+ * WHMCS calls cubepath_config() on many admin pages, so the API is only queried
+ * on the addon configuration page.
+ */
+function cubepath_project_field()
+{
+    $field = array(
+        'FriendlyName' => 'Default Project',
+        'Type'         => 'text',
+        'Size'         => '10',
+        'Description'  => 'CubePath project where new VPS are created. Save the API token to choose it from a list.',
+    );
+
+    if (basename($_SERVER['SCRIPT_NAME']) !== 'configaddonmods.php' || Settings::apiToken() === '')
+    {
+        return $field;
+    }
+
+    try
+    {
+        $field['Type'] = 'dropdown';
+        $field['Options'] = Projects::options(Projects::fetch(Settings::apiToken()), Settings::defaultProjectId());
+        $field['Description'] = 'CubePath project where new VPS are created.';
+        unset($field['Size']);
+    }
+    catch (Exception $e)
+    {
+        $field['Type'] = 'text';
+        $field['Description'] = 'Could not list projects: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
+    }
+
+    return $field;
 }
 
 function cubepath_activate()
