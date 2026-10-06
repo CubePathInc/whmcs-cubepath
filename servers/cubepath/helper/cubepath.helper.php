@@ -72,7 +72,185 @@ if (!class_exists('CubepathHelper'))
                 throw new \RuntimeException('No CubePath API token. Add a CubePath server in System Settings > Servers and assign its group to the product.');
             }
 
-            return new \Cubepath\CubepathClient($token);
+            // One client per token, so lists fetched through it are shared in the request.
+            static $clients = array();
+            if (!isset($clients[$token]))
+            {
+                $clients[$token] = new \Cubepath\CubepathClient($token);
+            }
+
+            return $clients[$token];
+        }
+
+        /**
+         * Markup that mounts the panel (ui/, built into assets/dist/app.js).
+         * The config is read by the script; see ui/src/lib/types.ts PanelConfig.
+         *
+         * @param array $config
+         * @return string
+         */
+        public static function panelHtml(array $config)
+        {
+            $script = CUBEPATHDIR . 'assets' . DS . 'dist' . DS . 'app.js';
+            if (!file_exists($script))
+            {
+                return '<div class="alert alert-warning">CubePath panel assets are missing. Upload the complete module from the release archive.</div>';
+            }
+
+            $src = self::systemUrl() . 'modules/servers/cubepath/assets/dist/app.js?v=' . filemtime($script);
+
+            // Base64 keeps the config intact: the client area decodes HTML entities in module output.
+            return '<div data-cubepath-panel="' . base64_encode(json_encode($config)) . '"></div>'
+                . '<script src="' . htmlspecialchars($src, ENT_QUOTES, 'UTF-8') . '" defer></script>';
+        }
+
+        /**
+         * WHMCS System URL with a trailing slash.
+         *
+         * @return string
+         */
+        public static function systemUrl()
+        {
+            $url = '';
+            if (class_exists('\WHMCS\Config\Setting'))
+            {
+                $url = (string)\WHMCS\Config\Setting::getValue('SystemURL');
+            }
+
+            return rtrim($url, '/') . '/';
+        }
+
+        /**
+         * Whether a request carries the session's CSRF token.
+         *
+         * @param string $token
+         * @return bool
+         */
+        public static function validToken($token)
+        {
+            $expected = (string)generate_token('plain');
+
+            return $expected !== '' && is_string($token) && hash_equals($expected, $token);
+        }
+
+        /**
+         * Language of the client viewing the client area.
+         *
+         * @param array $params
+         * @return string WHMCS language name, e.g. "spanish"
+         */
+        public static function clientLanguage(array $params)
+        {
+            if (!empty($_SESSION['Language']))
+            {
+                return (string)$_SESSION['Language'];
+            }
+            if (!empty($params['clientsdetails']['language']))
+            {
+                return (string)$params['clientsdetails']['language'];
+            }
+
+            return class_exists('\WHMCS\Config\Setting') ? (string)\WHMCS\Config\Setting::getValue('Language') : 'english';
+        }
+
+        /**
+         * Language of the logged-in administrator.
+         *
+         * @return string
+         */
+        public static function adminLanguage()
+        {
+            $language = isset($_SESSION['adminid'])
+                ? Capsule::table('tbladmins')->where('id', (int)$_SESSION['adminid'])->value('language')
+                : null;
+
+            return $language ? (string)$language : 'english';
+        }
+
+        /**
+         * Every VPS the token can see (GET /vps/), indexed by id. Cached per
+         * client for the request; client() reuses one client per token, so
+         * listing many services costs one call per token.
+         *
+         * @param \Cubepath\CubepathClient $client
+         * @return array<int, array>
+         */
+        public static function allVps($client)
+        {
+            static $cache = array();
+            $key = spl_object_hash($client);
+            if (!isset($cache[$key]))
+            {
+                $cache[$key] = array();
+                foreach ($client->vps()->listAll() as $vps)
+                {
+                    if (isset($vps['id']))
+                    {
+                        $cache[$key][(int)$vps['id']] = $vps;
+                    }
+                }
+            }
+
+            return $cache[$key];
+        }
+
+        /**
+         * One VPS from GET /vps/, or null when the token cannot see it.
+         *
+         * @param \Cubepath\CubepathClient $client
+         * @param int                       $vpsId
+         * @return array|null
+         */
+        public static function findVps($client, $vpsId)
+        {
+            $all = self::allVps($client);
+
+            return isset($all[(int)$vpsId]) ? $all[(int)$vpsId] : null;
+        }
+
+        /**
+         * The fields of a VPS the panels show (ui/src/lib/types.ts Vps).
+         *
+         * @param array $vps GET /vps/ entry
+         * @return array
+         */
+        public static function normalizeVps(array $vps)
+        {
+            $ipv6 = null;
+            foreach (isset($vps['floating_ips']['list']) ? $vps['floating_ips']['list'] : array() as $ip)
+            {
+                if ($ipv6 === null && isset($ip['type'], $ip['address']) && $ip['type'] === 'IPv6')
+                {
+                    $ipv6 = $ip['address'];
+                }
+            }
+
+            return array(
+                'id'         => (int)$vps['id'],
+                'name'       => (string)$vps['name'],
+                'label'      => isset($vps['label']) ? $vps['label'] : null,
+                'hostname'   => isset($vps['hostname']) ? $vps['hostname'] : null,
+                'status'     => (string)$vps['status'],
+                'user'       => isset($vps['user']) ? $vps['user'] : null,
+                'plan'       => isset($vps['plan']['plan_name']) ? array(
+                    'plan_name' => (string)$vps['plan']['plan_name'],
+                    'ram'       => (int)$vps['plan']['ram'],
+                    'cpu'       => (int)$vps['plan']['cpu'],
+                    'storage'   => (int)$vps['plan']['storage'],
+                    'bandwidth' => (float)$vps['plan']['bandwidth'],
+                ) : null,
+                'template'   => isset($vps['template']['template_name']) ? array(
+                    'template_name' => (string)$vps['template']['template_name'],
+                    'os_name'       => isset($vps['template']['os_name']) ? (string)$vps['template']['os_name'] : (string)$vps['template']['template_name'],
+                ) : null,
+                'location'   => isset($vps['location']['location_name']) ? array(
+                    'description'   => isset($vps['location']['description']) ? (string)$vps['location']['description'] : (string)$vps['location']['location_name'],
+                    'location_name' => (string)$vps['location']['location_name'],
+                ) : null,
+                'ipv4'       => self::primaryIpv4($vps),
+                'ipv6'       => $ipv6,
+                'private_ip' => !empty($vps['network']['assigned_ip']) ? (string)$vps['network']['assigned_ip'] : null,
+            );
         }
 
         /**
@@ -247,6 +425,39 @@ if (!class_exists('CubepathHelper'))
             }
 
             return null;
+        }
+
+        /**
+         * Point a service's configurable option at the sub-option whose API
+         * value is $value (e.g. the new OS after a reinstall). Does nothing if
+         * the product has no such option or value.
+         *
+         * @param int    $serviceId
+         * @param string $optionName Option name prefix (before the pipe)
+         * @param string $value      API value (before the pipe of the sub-option)
+         */
+        public static function setConfigurableOptionValue($serviceId, $optionName, $value)
+        {
+            $row = Capsule::table('tblhostingconfigoptions as hco')
+                ->join('tblproductconfigoptions as pco', 'hco.configid', '=', 'pco.id')
+                ->where('hco.relid', $serviceId)
+                ->where('pco.optionname', 'LIKE', $optionName . '|%')
+                ->first(array('hco.id', 'hco.configid'));
+
+            if (!$row)
+            {
+                return;
+            }
+
+            $subId = Capsule::table('tblproductconfigoptionssub')
+                ->where('configid', $row->configid)
+                ->where('optionname', 'LIKE', str_replace(array('%', '_'), array('\%', '\_'), $value) . '|%')
+                ->value('id');
+
+            if ($subId)
+            {
+                Capsule::table('tblhostingconfigoptions')->where('id', $row->id)->update(array('optionid' => $subId));
+            }
         }
 
         /**

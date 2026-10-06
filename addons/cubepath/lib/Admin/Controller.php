@@ -18,6 +18,7 @@ class Controller
 {
     const PAGES = array(
         'dashboard' => 'Dashboard',
+        'servers'   => 'Servers',
         'creator'   => 'Product Creator',
         'products'  => 'Products',
         'locations' => 'Locations',
@@ -79,6 +80,19 @@ class Controller
             'locations'  => $catalog ? count($catalog->locations()) : 0,
             'templates'  => $catalog ? count($catalog->templates()) : 0,
             'products'   => count(Products::ids()),
+        ));
+    }
+
+    private function pageServers()
+    {
+        require_once ROOTDIR . '/modules/servers/cubepath/loader.php';
+
+        return \CubepathHelper::panelHtml(array(
+            'mode'       => 'reseller',
+            'endpoint'   => $this->moduleLink . '&cpapi=1',
+            'token'      => generate_token('plain'),
+            'lang'       => \CubepathHelper::adminLanguage(),
+            'serviceUrl' => 'clientsservices.php?userid={userid}&id={id}',
         ));
     }
 

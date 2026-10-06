@@ -48,6 +48,8 @@ To run the module straight from a clone of this repository, install the Composer
 cp -r addons/cubepath/  /path/to/whmcs/modules/addons/cubepath/
 cp -r servers/cubepath/ /path/to/whmcs/modules/servers/cubepath/
 composer install --no-dev --working-dir=/path/to/whmcs/modules/addons/cubepath
+(cd ui && npm ci && npm run build)   # builds servers/cubepath/assets/dist/app.js
+cp -r servers/cubepath/assets/ /path/to/whmcs/modules/servers/cubepath/assets/
 ```
 
 ## Module Components
@@ -59,6 +61,7 @@ Access via **WHMCS Admin > Addons > CubePath**.
 | Page | Description |
 |------|-------------|
 | **Dashboard** | API connection status, configured project and catalog size |
+| **Servers** | Every CubePath service with its live status, resources and client; search, filter and run start, stop, reboot, suspend or unsuspend on several at once |
 | **Product Creator** | Create a WHMCS product for one CubePath plan, or for every available plan at once |
 | **Products** | List CubePath products with their service count, and sync new locations and templates into them |
 | **Locations** | Choose which locations clients can order |
@@ -80,20 +83,29 @@ Handles the full VPS lifecycle:
 
 Admin quick actions: **Start**, **Reboot**, **Stop**
 
-### Client Area
+### Client Area and Admin Panel
 
-Self-service panel available to end clients:
+The client area of a CubePath service shows a panel in the style of the CubePath dashboard. The same panel appears in the **CubePath** field of the service in the admin area, where administrators can act on the VPS for the client.
 
 | Tab | Features |
 |-----|----------|
-| **Overview** | VPS status, IPs, plan info, power controls, label editing, password change |
-| **Backups** | Create, restore, delete backups; configure backup schedule and retention |
-| **DNS** | Create zones, manage A/AAAA/CNAME/MX/TXT/SRV records |
-| **SSH Keys** | Add and remove SSH public keys |
-| **Firewall** | View and assign firewall groups to the VPS |
-| **Reinstall OS** | Reinstall with a different OS template |
-| **ISO** | Mount/unmount ISO images |
-| **Console** | VNC console access (when available via API) |
+| **Overview** | Resources, CPU and network of the last hour, bandwidth used this month, access details (IP, user, password, SSH command) and billing |
+| **Graphs** | CPU, memory, network and disk I/O for 1 hour to 30 days, with live refresh |
+| **Network** | Public IPs and their reverse DNS, private network |
+| **Firewall** | Inbound and outbound rules, with presets for SSH, HTTP, HTTPS, RDP and ping |
+| **Backups** | Automatic backup schedule; create, restore and delete backups |
+| **ISO** | Mount and unmount ISOs from the CubePath library |
+| **Reinstall** | Reinstall with any operating system the product sells, with a new root password |
+| **Settings** | Server name and root password |
+| **Activity** | Every action run through the module, by the client, an administrator or WHMCS |
+
+The header has the status and the start, reboot and stop buttons. Clients can only act while the service is Active; a suspended service is read-only.
+
+Firewall groups, SSH keys and DNS zones belong to the whole CubePath organization, so the panel never shows the reseller's other resources. Each service gets its own firewall group (`whmcs-service-<id>`), created the first time its rules are saved and deleted when the service is terminated. Groups attached to the VPS from CubePath are kept and only shown to administrators.
+
+There is no console: CubePath only opens VNC sessions for dashboard logins, not for API tokens.
+
+The panel is a React app built from `ui/` into `servers/cubepath/assets/dist/app.js`. It renders inside a shadow root, so it looks the same with any WHMCS theme and does not affect the theme's styles. The admin panel and the **Servers** page call the addon (`addonmodules.php?module=cubepath&cpapi=1`), so administrators need access to the CubePath addon.
 
 ## Creating Products
 
@@ -133,12 +145,17 @@ whmcs-cubepath/
     ├── cubepath.php             # Server module entry point
     ├── loader.php               # Autoloader
     ├── hooks.php                # Server hooks
-    ├── class/                   # Provisioning & renderer classes
-    ├── controller/              # Client area controllers (8)
-    ├── helper/                  # CubepathHelper, LangHelper, SessionHelper
-    ├── lang/                    # Language files
-    ├── template/                # Smarty templates
+    ├── class/                   # Provisioning (create, suspend, terminate...)
+    ├── controller/              # PanelController: JSON actions of the panels
+    ├── helper/                  # CubepathHelper, ActivityHelper
+    ├── template/panel.tpl       # Client area template that mounts the panel
+    ├── assets/dist/             # Built panel (from ui/, not committed)
     └── whmcs.json, logo.png     # Metadata shown in Apps & Integrations
+
+ui/                              # Panel source: React, Tailwind, recharts
+├── src/views/                   # Service panel, its tabs and the reseller list
+├── src/components/              # UI components (ShadCN style, dashboard tokens)
+└── src/i18n.tsx                 # English and Spanish texts
 ```
 
 ## SDK Method Mapping
@@ -151,12 +168,14 @@ whmcs-cubepath/
 | Reboot VPS | `$client->vps()->power($vpsId, 'reboot')` |
 | Destroy VPS | `$client->vps()->destroy($vpsId)` |
 | Resize VPS | `$client->vps()->resize($vpsId, $planName)` |
-| Reinstall OS | `$client->vps()->reinstall($vpsId, $templateName)` |
-| Manage Backups | `$client->vps()->backups()->list/create/restore/delete()` |
-| Manage DNS | `$client->dns()->createZone/listRecords/createRecord()` |
-| Manage SSH Keys | `$client->sshKeys()->list/create/delete()` |
-| Manage Firewall | `$client->firewall()->list/assignToVPS()` |
-| Mount ISO | `$client->vps()->isos()->mount/unmount()` |
+| Server details | `$client->vps()->listAll()` |
+| Graphs, bandwidth | `POST /graphql` (`vps { metrics, bandwidthUsage }`) |
+| Reinstall OS | `POST /vps/reinstall/{id}` with template and password |
+| Change password | `$client->vps()->changePassword($vpsId, $password)` |
+| Manage Backups | `$client->vps()->backups()->list/create/restore/delete/updateSettings()` |
+| Reverse DNS | `POST /floating_ips/reverse_dns/configure` |
+| Manage Firewall | `$client->firewall()->create/update/delete/assignToVPS()` |
+| Mount ISO | `$client->vps()->isos()->list/mount/unmount()` |
 
 ## Troubleshooting
 
@@ -174,7 +193,8 @@ whmcs-cubepath/
 ### Client area not loading
 - Verify both `modules/addons/cubepath/` and `modules/servers/cubepath/` are installed
 - Check file permissions (readable by web server)
-- Ensure `modules/addons/cubepath/vendor/` exists (it ships in the release zip; run `composer install --no-dev` if installing from source)
+- Ensure `modules/addons/cubepath/vendor/` and `modules/servers/cubepath/assets/dist/app.js` exist (both ship in the release zip; build them as in **Installing from source** otherwise)
+- If the admin panel says the session expired, check that your admin role has access to the CubePath addon
 
 ## Development
 
@@ -185,7 +205,15 @@ find addons servers -path '*/vendor' -prune -o -name '*.php' -print0 | xargs -0 
 
 Dependencies are locked against PHP 7.4 (`config.platform.php` in `addons/cubepath/composer.json`), so the bundled `vendor/` runs on every supported PHP version. Keep it that way when updating packages.
 
-To build a release archive locally:
+The panel lives in `ui/` (Node 22):
+
+```bash
+cd ui && npm ci
+npm run build   # type-check and build into servers/cubepath/assets/dist/app.js
+npm run dev     # rebuild on every change
+```
+
+To build a release archive locally (builds the panel too when `npm` is available):
 
 ```bash
 bin/build-release.sh v1.0.0   # writes dist/whmcs-cubepath-v1.0.0.zip
