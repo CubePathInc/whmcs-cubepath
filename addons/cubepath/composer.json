@@ -1,0 +1,24 @@
+{
+    "name": "cubepath/whmcs-cubepath",
+    "description": "CubePath WHMCS module",
+    "type": "project",
+    "license": "MIT",
+    "homepage": "https://cubepath.com",
+    "require": {
+        "php": ">=7.4",
+        "cubepath/cubepath-php-sdk": "^0.7"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/CubePathInc/cubepath-php-sdk"
+        }
+    ],
+    "config": {
+        "platform": {
+            "php": "7.4.33"
+        },
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}

@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Check module version matches tag
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          module="$(sed -nE "s/.*public \\\$version = '([^']+)'.*/\1/p" addons/cubepath/Configuration.php)"
+          if [ "$tag" != "$module" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match module version $module in addons/cubepath/Configuration.php"
+            exit 1
+          fi
+
+      - name: Build archive
+        id: build
+        run: echo "archive=$(bin/build-release.sh "$GITHUB_REF_NAME")" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.build.outputs.archive }}
+          generate_release_notes: true
