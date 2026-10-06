@@ -8,6 +8,11 @@
         "php": ">=7.4",
         "cubepath/cubepath-php-sdk": "^0.7"
     },
+    "autoload": {
+        "psr-4": {
+            "CubePath\\WHMCS\\Addon\\": "lib/"
+        }
+    },
     "repositories": [
         {
             "type": "vcs",

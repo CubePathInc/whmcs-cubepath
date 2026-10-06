@@ -87,62 +87,39 @@ class Cubepath
                 return 'OS template is not configured';
             }
 
-            // Use the WHMCS domain field as the hostname
-            $hostname = $this->params['domain'];
-            if (empty($hostname))
-            {
-                $hostname = 'vps-' . $this->params['serviceid'];
-            }
+            $hostname = $this->hostname();
 
-            // Create the VPS via CubePath API
-            $createParams = array(
+            // The API requires a root password or an SSH key; use the service password WHMCS generated
+            $password = $this->servicePassword();
+
+            $result = $client->vps()->create($projectId, array(
                 'name'          => $hostname,
+                'label'         => $hostname,
                 'plan_name'     => $planName,
                 'template_name' => $template,
                 'location_name' => $location,
-            );
+                'password'      => $password,
+            ));
 
-            $result = $client->vps()->create($projectId, $createParams);
-
-            // Extract VPS ID from the creation response
-            $vpsId = '';
-            if (isset($result['detail']['id']))
+            if (empty($result['vps_id']))
             {
-                $vpsId = $result['detail']['id'];
-            }
-            elseif (isset($result['id']))
-            {
-                $vpsId = $result['id'];
+                return 'CubePath API did not return a VPS ID';
             }
 
-            if (!empty($vpsId))
+            // Store the VPS ID in a custom field for future operations
+            CubepathHelper::setCustomFieldValue($this->params['serviceid'], 'vps_id', $result['vps_id']);
+
+            $hosting = array('domain' => $hostname, 'username' => 'root');
+            if (!empty($result['ipv4_address']))
             {
-                // Store the VPS ID in a custom field for future operations
-                CubepathHelper::setCustomFieldValue($this->params['serviceid'], 'vps_id', $vpsId);
-
-                // Attempt to fetch VPS details to get the IP address
-                try
-                {
-                    // Allow a moment for the VPS to initialize
-                    sleep(5);
-                    $vpsDetails = $client->vps()->get((int)$vpsId);
-
-                    if (isset($vpsDetails['ip_address']) && !empty($vpsDetails['ip_address']))
-                    {
-                        $ipAddress = $vpsDetails['ip_address'];
-                        CubepathHelper::setCustomFieldValue($this->params['serviceid'], 'ip_address', $ipAddress);
-
-                        // Also update the dedicated IP field in tblhosting
-                        Capsule::table('tblhosting')
-                            ->where('id', $this->params['serviceid'])
-                            ->update(array('dedicatedip' => $ipAddress));
-                    }
-                }
-                catch (\Exception $e)
-                {
-                    // IP retrieval is non-critical; the VPS was still created successfully
-                }
+                CubepathHelper::setCustomFieldValue($this->params['serviceid'], 'ip_address', $result['ipv4_address']);
+                $hosting['dedicatedip'] = $result['ipv4_address'];
             }
+            if (!empty($result['ipv6_address']))
+            {
+                $hosting['assignedips'] = $result['ipv6_address'];
+            }
+            Capsule::table('tblhosting')->where('id', $this->params['serviceid'])->update($hosting);
 
             return 'success';
         }
@@ -173,7 +150,7 @@ class Cubepath
                 return LangHelper::T('core.action.not_found_vps_id');
             }
 
-            $client->vps()->power((int)$vpsId, 'stop');
+            CubepathHelper::power($client, $vpsId, 'stop');
             return 'success';
         }
         catch (\Cubepath\APIError $e)
@@ -203,7 +180,7 @@ class Cubepath
                 return LangHelper::T('core.action.not_found_vps_id');
             }
 
-            $client->vps()->power((int)$vpsId, 'start');
+            CubepathHelper::power($client, $vpsId, 'start');
             return 'success';
         }
         catch (\Cubepath\APIError $e)
@@ -330,7 +307,7 @@ class Cubepath
                 return LangHelper::T('core.action.not_found_vps_id');
             }
 
-            $client->vps()->power((int)$vpsId, $action);
+            CubepathHelper::power($client, $vpsId, $action);
             return 'success';
         }
         catch (\Cubepath\APIError $e)
@@ -341,6 +318,46 @@ class Cubepath
         {
             return 'Error performing power action (' . $action . '): ' . $e->getMessage();
         }
+    }
+
+    /**
+     * Hostname for the VPS: the service domain if it is a valid DNS name,
+     * otherwise vps-<service id>.
+     *
+     * @return string
+     */
+    protected function hostname()
+    {
+        $domain = strtolower(trim(isset($this->params['domain']) ? $this->params['domain'] : ''));
+        $label = '(?!-)[a-z0-9-]{1,63}(?<!-)';
+
+        if (strlen($domain) <= 253 && preg_match('/^' . $label . '(\.' . $label . ')*$/', $domain))
+        {
+            return $domain;
+        }
+
+        return 'vps-' . $this->params['serviceid'];
+    }
+
+    /**
+     * Service password to use as the VPS root password. The API requires at
+     * least 8 characters; a stronger one is generated and saved if needed.
+     *
+     * @return string
+     */
+    protected function servicePassword()
+    {
+        $password = isset($this->params['password']) ? (string)$this->params['password'] : '';
+
+        if (strlen($password) < 12)
+        {
+            $password = bin2hex(random_bytes(12));
+            Capsule::table('tblhosting')
+                ->where('id', $this->params['serviceid'])
+                ->update(array('password' => encrypt($password)));
+        }
+
+        return $password;
     }
 
     /**
