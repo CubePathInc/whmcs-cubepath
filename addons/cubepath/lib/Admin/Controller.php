@@ -5,6 +5,7 @@ namespace CubePath\WHMCS\Addon\Admin;
 use CubePath\WHMCS\Addon\Catalog;
 use CubePath\WHMCS\Addon\Products;
 use CubePath\WHMCS\Addon\Projects;
+use CubePath\WHMCS\Addon\Servers;
 use CubePath\WHMCS\Addon\Settings;
 use Cubepath\CubepathClient;
 use Exception;
@@ -71,6 +72,7 @@ class Controller
         return $this->render('dashboard', array(
             'apiError'   => $this->apiError,
             'tokenSet'   => Settings::apiToken() !== '',
+            'server'     => Servers::first(),
             'projectId'  => Settings::defaultProjectId(),
             'project'    => $catalog ? $this->projectName(Settings::defaultProjectId()) : null,
             'planCount'  => $catalog ? count($catalog->plans()) : 0,

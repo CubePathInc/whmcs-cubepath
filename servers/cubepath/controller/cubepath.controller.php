@@ -39,7 +39,7 @@ class CubepathController
     }
 
     /**
-     * Initialize the CubePath API client from the product's API token.
+     * Initialize the CubePath API client from the service's API token.
      *
      * @return bool True if the client was created successfully
      */
@@ -47,7 +47,7 @@ class CubepathController
     {
         try
         {
-            $this->client = new \Cubepath\CubepathClient($this->params['configoption1']);
+            $this->client = CubepathHelper::client($this->params);
             return true;
         }
         catch (\Exception $e)

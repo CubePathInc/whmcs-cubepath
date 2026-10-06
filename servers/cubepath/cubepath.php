@@ -20,65 +20,104 @@ function cubepath_MetaData()
     return array(
         'DisplayName' => 'CubePath Cloud VPS',
         'APIVersion' => '1.1',
+        'RequiresServer' => true,
     );
 }
 
 /**
  * Product configuration options displayed in the WHMCS admin product setup.
  *
+ * The plan and project are chosen from lists loaded from the API with the
+ * token of the CubePath server in the product's server group. Their order
+ * sets the configoptionN they are stored in, so it must not change.
+ *
  * @param array $params WHMCS module parameters
  * @return array Configuration field definitions
  */
 function cubepath_ConfigOptions($params)
 {
-    $productId = isset($_GET['id']) ? (int)$_GET['id'] : (isset($_POST['id']) ? (int)$_POST['id'] : 0);
-
-    $configArray = array();
-
-    // Config Option 1: API Token
-    $configArray['api_token'] = array(
-        'FriendlyName' => 'API Token',
-        'Type' => 'text',
-        'Size' => '40',
-        'Description' => 'Your CubePath Cloud API token',
+    return array(
+        // configoption1
+        'api_token' => array(
+            'FriendlyName' => 'API Token',
+            'Type' => 'password',
+            'Size' => '40',
+            'Description' => 'Optional. Leave empty to use the token of the CubePath server in System Settings > Servers.',
+        ),
+        // configoption2
+        'plan_name' => array(
+            'FriendlyName' => 'Plan',
+            'Type' => 'text',
+            'Size' => '25',
+            'Loader' => 'cubepath_LoadPlans',
+            'SimpleMode' => true,
+            'Description' => 'Location and operating system options for the plan are created when the product is saved.',
+        ),
+        // configoption3
+        'project_id' => array(
+            'FriendlyName' => 'Project',
+            'Type' => 'text',
+            'Size' => '10',
+            'Loader' => 'cubepath_LoadProjects',
+            'SimpleMode' => true,
+            'Description' => 'CubePath project where VPS are created.',
+        ),
     );
+}
 
-    $apiToken = CubepathHelper::getProductConfigOption($productId, 'configoption1');
+/**
+ * Plan dropdown for the product module settings.
+ *
+ * @param array $params WHMCS module parameters of the product's server
+ * @return array plan name => description
+ */
+function cubepath_LoadPlans($params)
+{
+    $catalog = \CubePath\WHMCS\Addon\Catalog::fetch(CubepathHelper::client($params));
 
-    if ($apiToken)
+    $plans = array();
+    foreach ($catalog->plans() as $plan)
     {
-        try
-        {
-            $client = new \Cubepath\CubepathClient($apiToken, array('timeout' => 10, 'max_retries' => 0));
-            // Validates the token and lists the projects it can create VPS in
-            $projects = $client->get('/projects/');
-
-            // Config Option 2: Plan Name
-            $configArray['plan_name'] = array(
-                'FriendlyName' => 'Plan Name',
-                'Type' => 'text',
-                'Size' => '25',
-                'Description' => 'CubePath VPS plan name (e.g., rz.nano)',
-            );
-
-            // Config Option 3: Project
-            $configArray['project_id'] = array(
-                'FriendlyName' => 'Project',
-                'Type' => 'dropdown',
-                'Options' => CubepathHelper::projectOptions(
-                    $projects,
-                    (string)CubepathHelper::getProductConfigOption($productId, 'configoption3')
-                ),
-                'Description' => 'CubePath project where VPS are created (can be overridden per service via the project_id custom field)',
-            );
-        }
-        catch (\Exception $e)
-        {
-            $configArray['api_token']['Description'] = 'API connection failed: ' . $e->getMessage();
-        }
+        $plans[$plan['plan_name']] = sprintf(
+            '%s ($%s/mo)%s',
+            \CubePath\WHMCS\Addon\Catalog::describePlan($plan),
+            number_format($plan['price_per_month'], 2),
+            $plan['available'] ? '' : ' - out of stock'
+        );
     }
 
-    return $configArray;
+    return $plans;
+}
+
+/**
+ * Project dropdown for the product module settings.
+ *
+ * @param array $params WHMCS module parameters of the product's server
+ * @return array project id => name
+ */
+function cubepath_LoadProjects($params)
+{
+    return \CubePath\WHMCS\Addon\Projects::names(CubepathHelper::client($params)->projects()->list());
+}
+
+/**
+ * Test Connection button of System Settings > Servers.
+ *
+ * @param array $params WHMCS module parameters of the server
+ * @return array
+ */
+function cubepath_TestConnection($params)
+{
+    try
+    {
+        CubepathHelper::client($params)->projects()->list();
+
+        return array('success' => true, 'error' => '');
+    }
+    catch (\Exception $e)
+    {
+        return array('success' => false, 'error' => $e->getMessage());
+    }
 }
 
 /**

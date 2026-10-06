@@ -25,13 +25,20 @@ unzip whmcs-cubepath-<version>.zip 'modules/*'
 
 This creates `modules/addons/cubepath/` (including `vendor/`) and `modules/servers/cubepath/`.
 
-### 2. Activate the addon module
+### 2. Add a CubePath server
+
+1. Go to **WHMCS Admin > System Settings > Servers** and click **Add New Server**
+2. Set **Module** to **CubePath Cloud VPS**
+3. Set **Hostname** to `api.cubepath.com` and paste your API token in **Password**
+4. Click **Test Connection**, then **Save Changes**
+
+Products use the token of the CubePath server in their server group, so it is kept in one place.
+
+### 3. Activate the addon module
 
 1. Go to **WHMCS Admin > System Settings > Addon Modules**
 2. Find **CubePath** and click **Activate**
-3. Enter your **API Token**
-4. Set the **Default Project ID** (find it in your CubePath dashboard)
-5. Grant admin access and click **Save Changes**
+3. Click **Configure**, choose the **Default Project** used by the Product Creator, grant admin access and click **Save Changes**
 
 ### Installing from source
 
@@ -90,28 +97,23 @@ Self-service panel available to end clients:
 
 ## Creating Products
 
-### Automatic (recommended)
-
-1. Go to **Addons > CubePath > Product Creator**
-2. Pick a plan, product group and price and click **Create product**, or use **Create all plans**
-3. The module sets up:
-   - Module settings: API token, plan name and project ID
-   - Admin-only custom fields: VPS ID, IP Address, Project ID
-   - Configurable options for the location and operating system, limited to the locations where the plan is in stock and the templates that fit in its memory
-
-Prices of the configurable options start at zero; adjust them from **System Settings > Configurable Options** if you want to charge for a location or template.
-
-### Manual
+### From the product settings
 
 1. Create a product in **WHMCS Admin > System Settings > Products/Services**
-2. Set **Module** to `cubepath`
-3. Configure:
-   - **Config Option 1**: API Token
-   - **Config Option 2**: Plan name (e.g., `rz.nano`)
-   - **Config Option 3**: Project ID
-4. Create a configurable option group linked to the product with two dropdown options:
-   - `location|Location`, with sub-options named `<location_name>|<label>`, e.g. `us-mia-1|Miami, USA`
-   - `template|Operating System`, with sub-options named `<template_name>|<label>`, e.g. `ubuntu-24|Ubuntu 24.04`
+2. In **Module Settings**, set **Module** to **CubePath Cloud VPS** and **Server Group** to the group of your CubePath server
+3. Choose the **Plan** and **Project** from the lists loaded from the API
+4. Save the product. The module then creates:
+   - Admin-only custom fields: VPS ID, IP Address, Project ID
+   - Configurable options for the location and operating system, limited to the locations where the plan is in stock and the templates that fit in its memory
+5. In **Pricing**, set your price, and in **Module Settings** choose **Automatically setup the product as soon as the first payment is received**
+
+**API Token** (advanced mode) overrides the server's token for that product only.
+
+### With the Product Creator
+
+**Addons > CubePath > Product Creator** does the same for one plan, or for every available plan at once with a markup over CubePath's prices. Products are assigned to the CubePath server group and set up automatically on payment.
+
+Prices of the configurable options start at zero; adjust them from **System Settings > Configurable Options** if you want to charge for a location or template.
 
 ## Directory Structure
 
@@ -159,12 +161,13 @@ whmcs-cubepath/
 ## Troubleshooting
 
 ### API connection fails
-- Verify your API token is correct and active
+- Use **Test Connection** on the CubePath server in **System Settings > Servers** to check the API token
 - Check that your server can reach `https://api.cubepath.com`
 - Review WHMCS module log: **Utilities > Logs > Module Log**
 
 ### VPS not provisioned
-- Ensure the product has valid config options (API token, plan name, project ID)
+- Ensure the product has a CubePath server group, a plan and a project in **Module Settings**
+- If the location and operating system options are missing, check **Utilities > Logs > Activity Log** for a `CubePath:` entry and save the product again
 - Check that the selected location and template are available for the plan
 - Enable WHMCS module debug logging for detailed error output
 

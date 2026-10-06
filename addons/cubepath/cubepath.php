@@ -2,7 +2,7 @@
 /**
  * CubePath addon module for WHMCS.
  *
- * Holds the API credentials shared with the CubePath server module and
+ * Uses the API token of the CubePath server in System Settings > Servers and
  * provides admin tools to create products from CubePath plans and choose
  * which locations and templates clients can order.
  *
@@ -31,12 +31,6 @@ function cubepath_config()
         'author'      => '<a href="https://cubepath.com" target="_blank">CubePath</a>',
         'language'    => 'english',
         'fields'      => array(
-            'apiToken'         => array(
-                'FriendlyName' => 'API Token',
-                'Type'         => 'password',
-                'Size'         => '60',
-                'Description'  => 'CubePath API token, created from my.cubepath.com.',
-            ),
             'defaultProjectId' => cubepath_project_field(),
         ),
     );
@@ -54,7 +48,7 @@ function cubepath_project_field()
         'FriendlyName' => 'Default Project',
         'Type'         => 'text',
         'Size'         => '10',
-        'Description'  => 'CubePath project where new VPS are created. Save the API token to choose it from a list.',
+        'Description'  => 'CubePath project where new VPS are created. Add a CubePath server in System Settings > Servers to choose it from a list.',
     );
 
     if (basename($_SERVER['SCRIPT_NAME']) !== 'configaddonmods.php' || Settings::apiToken() === '')

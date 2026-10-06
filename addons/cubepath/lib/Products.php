@@ -9,7 +9,7 @@ use WHMCS\Database\Capsule;
  * Create and maintain WHMCS products that use the CubePath server module.
  *
  * A product is provisioned by the server module from:
- *  - configoption1: API token
+ *  - its server group's CubePath server, or an API token in configoption1
  *  - configoption2: plan name
  *  - configoption3: project ID
  *  - configurable options "location|..." and "template|...", whose
@@ -72,6 +72,12 @@ class Products
      */
     public static function create(Catalog $catalog, array $plan, $name, $groupId, $payType, array $pricing)
     {
+        $serverGroupId = Servers::groupId();
+        if (!$serverGroupId)
+        {
+            throw new RuntimeException('Add a CubePath server in System Settings > Servers before creating products.');
+        }
+
         $result = localAPI('AddProduct', array(
             'type'              => 'server',
             'gid'               => (int)$groupId,
@@ -79,8 +85,9 @@ class Products
             'description'       => Catalog::describePlan($plan),
             'paytype'           => $payType,
             'module'            => self::SERVER_MODULE,
+            'servergroupid'     => $serverGroupId,
+            'autosetup'         => 'payment',
             'showdomainoptions' => false,
-            'configoption1'     => Settings::apiToken(),
             'configoption2'     => $plan['plan_name'],
             'configoption3'     => Settings::defaultProjectId(),
             'pricing'           => $pricing,
