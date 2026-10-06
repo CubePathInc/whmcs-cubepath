@@ -25,16 +25,16 @@ class Cubepath
     }
 
     /**
-     * Create and return a CubePath API client using the configured API token.
+     * Create and return a CubePath API client using the service's API token.
      *
      * @return \Cubepath\CubepathClient
-     * @throws \InvalidArgumentException If API token is empty
+     * @throws \RuntimeException If no API token is configured
      */
     public function getCubepathClient()
     {
         if ($this->client === null)
         {
-            $this->client = new \Cubepath\CubepathClient($this->params['configoption1']);
+            $this->client = CubepathHelper::client($this->params);
         }
         return $this->client;
     }
@@ -106,8 +106,9 @@ class Cubepath
                 return 'CubePath API did not return a VPS ID';
             }
 
-            // Store the VPS ID in a custom field for future operations
+            // Store the VPS and project IDs in custom fields for future operations
             CubepathHelper::setCustomFieldValue($this->params['serviceid'], 'vps_id', $result['vps_id']);
+            CubepathHelper::setCustomFieldValue($this->params['serviceid'], 'project_id', $projectId);
 
             $hosting = array('domain' => $hostname, 'username' => 'root');
             if (!empty($result['ipv4_address']))

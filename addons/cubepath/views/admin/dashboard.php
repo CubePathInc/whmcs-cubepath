@@ -2,6 +2,7 @@
 /**
  * @var string|null $apiError
  * @var bool        $tokenSet
+ * @var object|null $server
  * @var string      $projectId
  * @var string|null $project
  * @var int         $planCount
@@ -28,7 +29,15 @@ include __DIR__ . '/api_error.php';
                 </tr>
                 <tr>
                     <th><?= $e($t('apiToken')) ?></th>
-                    <td><?= $e($tokenSet ? $t('configured') : $t('notConfigured')) ?></td>
+                    <td>
+                        <?php if ($server): ?>
+                            <a href="configservers.php?action=manage&amp;id=<?= (int)$server->id ?>"><?= $e($server->name) ?></a>
+                        <?php elseif ($tokenSet): ?>
+                            <?= $e($t('legacyToken')) ?>
+                        <?php else: ?>
+                            <a href="configservers.php" class="text-danger"><?= $e($t('notConfigured')) ?></a>
+                        <?php endif; ?>
+                    </td>
                 </tr>
                 <tr>
                     <th><?= $e($t('defaultProjectId')) ?></th>

@@ -49,11 +49,16 @@ class Settings
     }
 
     /**
-     * API token. WHMCS stores addon "password" fields as plain text; the type only masks the input.
+     * API token of the first CubePath server in System Settings > Servers.
+     *
+     * Installs from before servers were used kept the token in the addon
+     * settings, as plain text; it is still read until a server is added.
      */
     public static function apiToken()
     {
-        return trim(self::get('apiToken'));
+        $token = Servers::token();
+
+        return $token !== '' ? $token : trim(self::get('apiToken'));
     }
 
     public static function defaultProjectId()

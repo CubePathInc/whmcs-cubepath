@@ -40,35 +40,39 @@ if (!class_exists('CubepathHelper'))
         }
 
         /**
-         * Dropdown options (project id => name) from the GET /projects/ response.
-         * A saved project that is no longer listed is kept so saving the product
-         * does not silently change it.
+         * API token for a product or service: the product's own token in
+         * configoption1, otherwise the password of its CubePath server.
          *
-         * @param array  $projects entries with a nested "project" object
-         * @param string $current  project id currently saved
-         * @return array
+         * @param array $params WHMCS module parameters
+         * @return string
          */
-        public static function projectOptions(array $projects, $current)
+        public static function apiToken(array $params)
         {
-            $names = array();
-            foreach ($projects as $entry)
+            $token = isset($params['configoption1']) ? trim((string)$params['configoption1']) : '';
+            if ($token === '' && isset($params['serverpassword']))
             {
-                $project = isset($entry['project']) && is_array($entry['project']) ? $entry['project'] : $entry;
-                if (isset($project['id']))
-                {
-                    $id = (string)$project['id'];
-                    $names[$id] = isset($project['name']) && $project['name'] !== '' ? (string)$project['name'] : 'Project ' . $id;
-                }
-            }
-            asort($names, SORT_NATURAL | SORT_FLAG_CASE);
-
-            $options = array('' => '-- Select a project --') + $names;
-            if ($current !== '' && !isset($options[$current]))
-            {
-                $options[$current] = 'Project ' . $current . ' (not found)';
+                $token = trim((string)$params['serverpassword']);
             }
 
-            return $options;
+            return $token;
+        }
+
+        /**
+         * API client for a product or service.
+         *
+         * @param array $params WHMCS module parameters
+         * @return \Cubepath\CubepathClient
+         * @throws \RuntimeException When no API token is configured
+         */
+        public static function client(array $params)
+        {
+            $token = self::apiToken($params);
+            if ($token === '')
+            {
+                throw new \RuntimeException('No CubePath API token. Add a CubePath server in System Settings > Servers and assign its group to the product.');
+            }
+
+            return new \Cubepath\CubepathClient($token);
         }
 
         /**
