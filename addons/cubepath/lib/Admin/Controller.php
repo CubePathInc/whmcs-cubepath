@@ -300,6 +300,17 @@ class Controller
 
     private function groupFromPost(array $post)
     {
+        if (isset($post['gid']) && $post['gid'] === 'new')
+        {
+            $name = trim(isset($post['new_group']) ? (string)$post['new_group'] : '');
+            if ($name === '')
+            {
+                throw new Exception($this->t('groupRequired'));
+            }
+
+            return Products::createGroup($name);
+        }
+
         $groupId = isset($post['gid']) ? (int)$post['gid'] : 0;
         if (!Capsule::table('tblproductgroups')->where('id', $groupId)->exists())
         {

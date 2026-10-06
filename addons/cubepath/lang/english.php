@@ -38,8 +38,8 @@ $_ADDONLANG['catalog'] = 'Catalog';
 // Product creator
 $_ADDONLANG['creatorIntro'] = 'Each product is linked to a CubePath plan. Clients choose the location and operating system when ordering.';
 $_ADDONLANG['projectIdMissing'] = 'Choose a Default Project in the addon configuration before creating products, or VPS cannot be provisioned.';
-$_ADDONLANG['noProductGroups'] = 'There are no product groups yet.';
-$_ADDONLANG['createGroup'] = 'Create one';
+$_ADDONLANG['newGroupOption'] = '+ New group';
+$_ADDONLANG['newGroupName'] = 'New group name';
 $_ADDONLANG['createSingle'] = 'Create a product';
 $_ADDONLANG['productName'] = 'Product name';
 $_ADDONLANG['productNamePlaceholder'] = 'Defaults to the plan name';

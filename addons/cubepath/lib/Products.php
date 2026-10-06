@@ -106,6 +106,40 @@ class Products
     }
 
     /**
+     * Create a visible product group, with a store URL slug made from its name.
+     *
+     * @return int Group ID
+     */
+    public static function createGroup($name)
+    {
+        $ascii = function_exists('transliterator_transliterate')
+            ? transliterator_transliterate('Any-Latin; Latin-ASCII', $name)
+            : @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name);
+        $base = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($ascii !== false ? $ascii : $name)), '-');
+        $base = $base !== '' ? substr($base, 0, 120) : 'group';
+        $slug = $base;
+        for ($i = 2; Capsule::table('tblproductgroups')->where('slug', $slug)->exists(); $i++)
+        {
+            $slug = $base . '-' . $i;
+        }
+
+        $now = date('Y-m-d H:i:s');
+
+        return (int)Capsule::table('tblproductgroups')->insertGetId(array(
+            'name'             => $name,
+            'slug'             => $slug,
+            'headline'         => '',
+            'tagline'          => '',
+            'orderfrmtpl'      => '',
+            'disabledgateways' => '',
+            'hidden'           => 0,
+            'order'            => (int)Capsule::table('tblproductgroups')->max('order') + 1,
+            'created_at'       => $now,
+            'updated_at'       => $now,
+        ));
+    }
+
+    /**
      * Pricing that disables every billing cycle except the ones given.
      *
      * @param array $monthlyByCurrency currency id => monthly price

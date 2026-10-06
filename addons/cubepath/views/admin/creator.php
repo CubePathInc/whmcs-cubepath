@@ -12,11 +12,6 @@ include __DIR__ . '/api_error.php';
 <?php if ($projectId === ''): ?>
     <div class="alert alert-warning"><?= $e($t('projectIdMissing')) ?></div>
 <?php endif; ?>
-<?php if (!$groups): ?>
-    <div class="alert alert-warning">
-        <?= $e($t('noProductGroups')) ?> <a href="configproducts.php?action=creategroup"><?= $e($t('createGroup')) ?></a>
-    </div>
-<?php endif; ?>
 
 <p><?= $e($t('creatorIntro')) ?></p>
 
@@ -53,11 +48,14 @@ include __DIR__ . '/api_error.php';
             <div class="form-group">
                 <label class="col-sm-2 control-label" for="cp-gid"><?= $e($t('productGroup')) ?></label>
                 <div class="col-sm-10">
-                    <select name="gid" id="cp-gid" class="form-control" required>
+                    <select name="gid" id="cp-gid" class="form-control cp-group" required>
                         <?php foreach ($groups as $id => $name): ?>
                             <option value="<?= (int)$id ?>"><?= $e($name) ?></option>
                         <?php endforeach; ?>
+                        <option value="new"><?= $e($t('newGroupOption')) ?></option>
                     </select>
+                    <input type="text" name="new_group" class="form-control cp-new-group" style="margin-top: 5px;"
+                           placeholder="<?= $e($t('newGroupName')) ?>">
                 </div>
             </div>
 
@@ -88,7 +86,7 @@ include __DIR__ . '/api_error.php';
 
             <div class="form-group">
                 <div class="col-sm-offset-2 col-sm-10">
-                    <button type="submit" class="btn btn-primary"<?= $plans && $groups ? '' : ' disabled' ?>><?= $e($t('createProduct')) ?></button>
+                    <button type="submit" class="btn btn-primary"<?= $plans ? '' : ' disabled' ?>><?= $e($t('createProduct')) ?></button>
                 </div>
             </div>
         </form>
@@ -105,11 +103,13 @@ include __DIR__ . '/api_error.php';
             <input type="hidden" name="action" value="createAllProducts">
             <div class="form-group">
                 <label for="cp-all-gid"><?= $e($t('productGroup')) ?></label>
-                <select name="gid" id="cp-all-gid" class="form-control" required>
+                <select name="gid" id="cp-all-gid" class="form-control cp-group" required>
                     <?php foreach ($groups as $id => $name): ?>
                         <option value="<?= (int)$id ?>"><?= $e($name) ?></option>
                     <?php endforeach; ?>
+                    <option value="new"><?= $e($t('newGroupOption')) ?></option>
                 </select>
+                <input type="text" name="new_group" class="form-control cp-new-group" placeholder="<?= $e($t('newGroupName')) ?>">
             </div>
             <div class="form-group">
                 <label for="cp-markup"><?= $e($t('markup')) ?></label>
@@ -118,7 +118,7 @@ include __DIR__ . '/api_error.php';
                     <span class="input-group-addon">%</span>
                 </div>
             </div>
-            <button type="submit" class="btn btn-default"<?= $plans && $groups ? '' : ' disabled' ?>><?= $e($t('createAllButton')) ?></button>
+            <button type="submit" class="btn btn-default"<?= $plans ? '' : ' disabled' ?>><?= $e($t('createAllButton')) ?></button>
         </form>
     </div>
 </div>
@@ -132,9 +132,17 @@ jQuery(function ($) {
     function togglePricing() {
         $('#cp-pricing').toggle($('input[name="paytype"]:checked').val() !== 'free');
     }
+    function toggleNewGroup() {
+        $('.cp-group').each(function () {
+            var isNew = $(this).val() === 'new';
+            $(this).siblings('.cp-new-group').toggle(isNew).prop('required', isNew);
+        });
+    }
     $('#cp-plan').on('change', prefillUsd);
+    $('.cp-group').on('change', toggleNewGroup);
     $('input[name="paytype"]').on('change', togglePricing);
     prefillUsd();
     togglePricing();
+    toggleNewGroup();
 });
 </script>
