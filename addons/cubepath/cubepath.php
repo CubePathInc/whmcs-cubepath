@@ -9,7 +9,8 @@
  * @see https://cubepath.com
  */
 
-use CubePath\WHMCS\Addon\Admin\Controller;
+use CubePath\WHMCS\Addon\Admin\AddonApi;
+use CubePath\WHMCS\Addon\Admin\PanelApi;
 use CubePath\WHMCS\Addon\Projects;
 use CubePath\WHMCS\Addon\Settings;
 
@@ -86,12 +87,20 @@ function cubepath_deactivate()
 
 function cubepath_output($vars)
 {
+    $lang = isset($vars['_lang']) ? $vars['_lang'] : array();
     if (isset($_GET['cpapi']))
     {
-        \CubePath\WHMCS\Addon\Admin\PanelApi::handle($_POST);
+        PanelApi::handle($_POST, $lang);
     }
 
-    $controller = new Controller($vars['modulelink'], isset($vars['_lang']) ? $vars['_lang'] : array());
+    require_once ROOTDIR . '/modules/servers/cubepath/loader.php';
 
-    echo $controller->dispatch($_GET, $_POST);
+    echo \CubepathHelper::panelHtml(array(
+        'mode'       => 'addon',
+        'page'       => AddonApi::page(isset($_GET['page']) ? $_GET['page'] : ''),
+        'endpoint'   => $vars['modulelink'] . '&cpapi=1',
+        'token'      => generate_token('plain'),
+        'lang'       => 'english',
+        'serviceUrl' => 'clientsservices.php?userid={userid}&id={id}',
+    ));
 }

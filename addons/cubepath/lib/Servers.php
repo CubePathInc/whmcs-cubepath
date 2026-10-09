@@ -11,6 +11,7 @@ use WHMCS\Database\Capsule;
 class Servers
 {
     const GROUP_NAME = 'CubePath';
+    const API_HOSTNAME = 'api.cubepath.com';
 
     /**
      * First enabled CubePath server, or null when there is none.
@@ -32,6 +33,52 @@ class Servers
         $server = self::first();
 
         return $server ? trim((string)decrypt($server->password)) : '';
+    }
+
+    /**
+     * Store an API token in the first enabled CubePath server, adding one
+     * pointing at the public API when there is none.
+     *
+     * WHMCS has no local API for servers, so the row is written directly.
+     *
+     * @return int Server ID
+     */
+    public static function saveToken($token)
+    {
+        $server = self::first();
+        if ($server)
+        {
+            Capsule::table('tblservers')->where('id', $server->id)->update(array('password' => encrypt($token)));
+
+            return (int)$server->id;
+        }
+
+        $row = array(
+            'name'        => self::GROUP_NAME,
+            'hostname'    => self::API_HOSTNAME,
+            'type'        => Products::SERVER_MODULE,
+            'password'    => encrypt($token),
+            'secure'      => 'on',
+            'active'      => 1,
+            'disabled'    => 0,
+            'maxaccounts' => 0,
+            'monthlycost' => 0,
+        );
+
+        // Text columns have no default and fail under strict SQL mode when left out.
+        $columns = Capsule::schema()->getColumnListing('tblservers');
+        foreach ($columns as $column)
+        {
+            if ($column !== 'id' && !array_key_exists($column, $row))
+            {
+                $row[$column] = '';
+            }
+        }
+
+        $serverId = (int)Capsule::table('tblservers')->insertGetId(array_intersect_key($row, array_flip($columns)));
+        self::groupId();
+
+        return $serverId;
     }
 
     /**

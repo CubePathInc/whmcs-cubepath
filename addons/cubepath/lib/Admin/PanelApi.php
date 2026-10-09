@@ -8,7 +8,7 @@ use WHMCS\Database\Capsule;
 
 /**
  * JSON endpoint of the admin panels (addonmodules.php?module=cubepath&cpapi=1):
- * the service panel on the admin service page and the reseller server list.
+ * the service panel on the admin service page and the addon pages.
  * WHMCS has already checked that the admin may use this addon.
  */
 class PanelApi
@@ -22,7 +22,7 @@ class PanelApi
     /**
      * Answer the request and exit.
      */
-    public static function handle(array $post)
+    public static function handle(array $post, array $lang)
     {
         require_once ROOTDIR . '/modules/servers/cubepath/loader.php';
 
@@ -32,7 +32,8 @@ class PanelApi
         }
 
         $action = isset($post['cpaction']) ? (string)$post['cpaction'] : '';
-        $data = json_decode(isset($post['cpdata']) ? (string)$post['cpdata'] : '{}', true);
+        // WHMCS runs htmlspecialchars() over $_POST, which breaks the JSON quotes.
+        $data = json_decode(htmlspecialchars_decode(isset($post['cpdata']) ? (string)$post['cpdata'] : '{}', ENT_QUOTES), true);
         $data = is_array($data) ? $data : array();
 
         try
@@ -44,6 +45,11 @@ class PanelApi
             if ($action === 'servers.bulk')
             {
                 \PanelController::sendJson(array('ok' => true, 'data' => self::bulk($data)));
+            }
+            if (strpos($action, 'addon.') === 0)
+            {
+                $api = new AddonApi($lang);
+                \PanelController::sendJson(array('ok' => true, 'data' => $api->handle(substr($action, 6), $data)));
             }
 
             $params = self::serviceParams(isset($post['serviceid']) ? (int)$post['serviceid'] : 0);

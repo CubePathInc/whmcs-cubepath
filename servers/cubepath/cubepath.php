@@ -239,7 +239,7 @@ function cubepath_AdminServicesTabFields($params)
             'mode'      => 'admin',
             'endpoint'  => 'addonmodules.php?module=cubepath&cpapi=1',
             'token'     => generate_token('plain'),
-            'lang'      => CubepathHelper::adminLanguage(),
+            'lang'      => 'english',
             'serviceId' => (int)$params['serviceid'],
         )),
     );
