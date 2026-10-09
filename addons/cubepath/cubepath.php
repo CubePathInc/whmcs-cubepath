@@ -13,6 +13,7 @@ use CubePath\WHMCS\Addon\Admin\AddonApi;
 use CubePath\WHMCS\Addon\Admin\PanelApi;
 use CubePath\WHMCS\Addon\Projects;
 use CubePath\WHMCS\Addon\Settings;
+use CubePath\WHMCS\Addon\WelcomeEmail;
 
 if (!defined('WHMCS'))
 {
@@ -76,8 +77,17 @@ function cubepath_project_field()
 function cubepath_activate()
 {
     Settings::migrateLegacy();
+    WelcomeEmail::ensure();
 
     return array('status' => 'success', 'description' => 'CubePath addon activated.');
+}
+
+/**
+ * Runs when the addon files are replaced by a newer version.
+ */
+function cubepath_upgrade($vars)
+{
+    WelcomeEmail::ensure();
 }
 
 function cubepath_deactivate()

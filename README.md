@@ -120,6 +120,7 @@ The panel is a React app built from `ui/` into `servers/cubepath/assets/dist/app
    - Admin-only custom fields: VPS ID, IP Address, Project ID
    - Configurable options for the location and operating system, limited to the locations where the plan is in stock and the templates that fit in its memory
 5. In **Pricing**, set your price, and in **Module Settings** choose **Automatically setup the product as soon as the first payment is received**
+6. In **Details**, set **Welcome Email** to **CubePath VPS Welcome Email**
 
 **API Token** (advanced mode) overrides the server's token for that product only.
 
@@ -132,6 +133,12 @@ Each product goes in a product group, the categories of the store. **Create all 
 Every location where a plan exists gets an option. Locations where the plan is sold out are hidden from the order form, and the WHMCS cron checks CubePath's stock every 15 minutes to show them again when restocked.
 
 Prices of the location and template options start at zero; adjust them from **System Settings > Configurable Options** if you want to charge for a location or template.
+
+### Welcome email
+
+Activating or updating the addon adds the **CubePath VPS Welcome Email** template, in English and Spanish, to **System Settings > Email Templates > Product/Service Messages**. WHMCS sends it once the VPS is created, with the hostname, IPv4, IPv6, root password, the SSH command and a link to the VPS panel. Products made with the Product Creator use it as their welcome email; for products created before, choose it in the product's **Details** tab. Edits made to the template are kept on updates.
+
+Like the rest of the WHMCS emails, it is sent through **System Settings > Mail**. The default PHP Mail needs a working sendmail on the server; otherwise set up SMTP or one of the mail providers WHMCS supports.
 
 ## Order Form
 
