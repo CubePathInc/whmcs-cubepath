@@ -224,6 +224,7 @@ function cubepath_ClientArea($params)
                 'token'     => generate_token('plain'),
                 'lang'      => CubepathHelper::clientLanguage($params),
                 'serviceId' => (int)$params['serviceid'],
+                'ticketUrl' => CubepathHelper::ticketUrl($params['serviceid']),
             )),
         ),
     );

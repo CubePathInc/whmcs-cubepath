@@ -5,6 +5,7 @@ import {
   Disc3,
   HardDriveDownload,
   LayoutDashboard,
+  LifeBuoy,
   Loader2,
   MapPin,
   Network,
@@ -148,6 +149,12 @@ export function ServicePanel() {
               <PowerOff />
               {t("power.stop")}
             </Button>
+            {config.ticketUrl && (
+              <Button variant="outline" size="sm" onClick={() => (window.location.href = config.ticketUrl!)}>
+                <LifeBuoy />
+                {t("panel.openTicket")}
+              </Button>
+            )}
             <Button variant="ghost" size="icon-sm" aria-label={t("common.refresh")} title={t("common.refresh")} onClick={() => void overview.reload()}>
               <RefreshCw className={overview.loading ? "animate-spin" : ""} />
             </Button>

@@ -107,6 +107,26 @@ if (!class_exists('CubepathHelper'))
         }
 
         /**
+         * New ticket page with the service already chosen. With a single
+         * department WHMCS skips the department step and drops the service,
+         * so the link goes straight to the form then.
+         *
+         * @param int $serviceId
+         * @return string
+         */
+        public static function ticketUrl($serviceId)
+        {
+            $departments = Capsule::table('tblticketdepartments')->where('hidden', '')->pluck('id')->all();
+            $query = 'relatedservice=S' . (int)$serviceId;
+            if (count($departments) === 1)
+            {
+                $query = 'step=2&deptid=' . (int)$departments[0] . '&' . $query;
+            }
+
+            return self::systemUrl() . 'submitticket.php?' . $query;
+        }
+
+        /**
          * WHMCS System URL with a trailing slash.
          *
          * @return string

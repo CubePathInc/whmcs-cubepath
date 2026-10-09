@@ -100,6 +100,16 @@ add_hook('ClientAreaSecondarySidebar', 1, function ($sidebar) {
     }
 });
 
+foreach (array('ClientAreaPrimarySidebar', 'ClientAreaSecondarySidebar') as $cpSidebarHook)
+{
+    add_hook($cpSidebarHook, 2, function ($sidebar) {
+        if (cubepath_client_area() && ClientArea::supportPage())
+        {
+            ClientArea::clearSidebar($sidebar);
+        }
+    });
+}
+
 add_hook('ClientAreaPageCart', 1, function ($vars) {
     if (!cubepath_client_area() || $_SERVER['REQUEST_METHOD'] !== 'GET')
     {

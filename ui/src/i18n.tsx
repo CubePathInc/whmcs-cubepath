@@ -56,6 +56,7 @@ const en = {
   "power.reboot.done": "Reboot requested.",
 
   "panel.notProvisioned": "This server has not been created yet. It will appear here once the order is processed.",
+  "panel.openTicket": "Open a ticket",
 
   "metrics.cpu": "CPU",
   "metrics.memory": "Memory",
@@ -510,6 +511,7 @@ const es: Partial<Dictionary> = {
   "power.reboot.done": "Reinicio solicitado.",
 
   "panel.notProvisioned": "Este servidor aún no se ha creado. Aparecerá aquí cuando se procese el pedido.",
+  "panel.openTicket": "Abrir ticket",
 
   "metrics.cpu": "CPU",
   "metrics.memory": "Memoria",
