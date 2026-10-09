@@ -77,11 +77,26 @@ export function BackupsTab() {
             <CardDescription>{t("backups.scheduleHint")}</CardDescription>
           </div>
           <label className="flex shrink-0 items-center gap-2 text-sm font-medium">
-            <Switch checked={settings.enabled} onCheckedChange={(enabled) => setSettings({ ...settings, enabled })} aria-label={t("backups.automatic")} />
+            <Switch
+              checked={settings.enabled}
+              disabled={backups.data.locked && !settings.enabled}
+              onCheckedChange={(enabled) => setSettings({ ...settings, enabled })}
+              aria-label={t("backups.automatic")}
+            />
             {settings.enabled ? t("common.enabled") : t("common.disabled")}
           </label>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {backups.data.locked && !settings.enabled && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted px-4 py-3 text-sm">
+              <span>{t("backups.notIncluded")}</span>
+              {backups.data.upgradeUrl && (
+                <Button size="sm" variant="outline" onClick={() => window.open(backups.data!.upgradeUrl!, "_top")}>
+                  {t("backups.order")}
+                </Button>
+              )}
+            </div>
+          )}
           <div className="grid gap-4 @sm:grid-cols-3">
             <div className="grid gap-1.5">
               <Label>{t("backups.hour")}</Label>

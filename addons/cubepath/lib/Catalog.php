@@ -149,7 +149,8 @@ class Catalog
     /**
      * Operating systems and one-click applications that can be deployed.
      *
-     * @return array<string, array> template_name => {label, type, min_ram_mb}
+     * @return array<string, array> template_name => {label, type, os, min_ram_mb};
+     *                              "os" is the operating system family ("ubuntu")
      */
     public function templates()
     {
@@ -165,6 +166,7 @@ class Catalog
             $templates[(string)$os['template_name']] = array(
                 'label'      => !empty($os['os_name']) ? (string)$os['os_name'] : (string)$os['template_name'],
                 'type'       => 'os',
+                'os'         => !empty($os['operating_system']) ? strtolower((string)$os['operating_system']) : '',
                 'min_ram_mb' => 0,
             );
         }
@@ -185,6 +187,7 @@ class Catalog
             $templates[(string)$app['template_name']] = array(
                 'label'      => $label,
                 'type'       => 'app',
+                'os'         => '',
                 'min_ram_mb' => isset($app['min_ram']) ? (int)$app['min_ram'] : 0,
             );
         }

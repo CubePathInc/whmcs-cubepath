@@ -131,7 +131,22 @@ Each product goes in a product group, the categories of the store. **Create all 
 
 Every location where a plan exists gets an option. Locations where the plan is sold out are hidden from the order form, and the WHMCS cron checks CubePath's stock every 15 minutes to show them again when restocked.
 
-Prices of the configurable options start at zero; adjust them from **System Settings > Configurable Options** if you want to charge for a location or template.
+Prices of the location and template options start at zero; adjust them from **System Settings > Configurable Options** if you want to charge for a location or template.
+
+## Order Form
+
+Besides the location and the image, **Addons > CubePath > Settings > Order form** chooses what clients can order. Saving applies it to every CubePath product:
+
+| Option | What the client gets | Price |
+|--------|----------------------|-------|
+| **SSH key** | A public key added to the VPS. It is created in your CubePath account and deleted when the service is terminated (retried by the daily cron while the VPS is being destroyed) | Free |
+| **Cloud-init** | A user data script run on the first boot | Free |
+| **Automatic backups** | Daily backups. Clients without them cannot turn backups on from their panel, and can add them with **Upgrade options** | A share of the product price, 20% by default (what CubePath charges) |
+| **IPv6 only** | The VPS is created without an IPv4 address | A monthly discount, $1.50 by default (what CubePath saves you) |
+
+Backups and network are configurable options; the SSH key and cloud-init are custom fields shown on the order form. Windows images take neither.
+
+The **CubePath-style configurator** replaces the cart's fields with cards like the CubePath dashboard: locations with flags, operating systems with their versions, applications, network, backups, hostname and password. It drives the cart's own fields, so prices, validation and checkout work as usual with any order form template; if it cannot load, the native fields are shown.
 
 ## Directory Structure
 
@@ -193,6 +208,7 @@ ui/                              # Panel source: React, Tailwind, recharts
 - Ensure the product has a CubePath server group, a plan and a project in **Module Settings**
 - If the location and operating system options are missing, check **Utilities > Logs > Activity Log** for a `CubePath:` entry and save the product again
 - Check that the selected location and template are available for the plan
+- `The SSH public key of the order is not valid` means the key was changed after ordering; fix the `SSH public key` field of the service and run Create again
 - Enable WHMCS module debug logging for detailed error output
 
 ### Client area not loading

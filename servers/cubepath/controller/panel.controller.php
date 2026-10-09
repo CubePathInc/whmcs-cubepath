@@ -765,6 +765,10 @@ if (!class_exists('PanelController'))
             return array(
                 'backups'  => $backups,
                 'total'    => isset($list['total']) ? (int)$list['total'] : count($backups),
+                'locked'   => $this->backupsLocked(),
+                'upgradeUrl' => $this->actor === self::ACTOR_CLIENT
+                    ? CubepathHelper::systemUrl() . 'upgrade.php?type=configoptions&id=' . (int)$this->params['serviceid']
+                    : null,
                 'settings' => array(
                     'enabled'        => !empty($settings['enabled']),
                     'schedule_hour'  => isset($settings['schedule_hour']) ? (int)$settings['schedule_hour'] : 3,
@@ -819,8 +823,22 @@ if (!class_exists('PanelController'))
             throw new PanelException('Backup not found.');
         }
 
+        /**
+         * Whether the client may not turn automatic backups on because the
+         * product sells them and the service has not bought them.
+         */
+        protected function backupsLocked()
+        {
+            return $this->actor === self::ACTOR_CLIENT && CubepathHelper::backupsPurchased((int)$this->params['serviceid']) === false;
+        }
+
         protected function backupSettings(array $data)
         {
+            if (!empty($data['enabled']) && $this->backupsLocked())
+            {
+                throw new PanelException('Automatic backups are not included in this service. Order them from Upgrade options.');
+            }
+
             $settings = array(
                 'enabled'        => !empty($data['enabled']),
                 'schedule_hour'  => isset($data['schedule_hour']) ? (int)$data['schedule_hour'] : 3,

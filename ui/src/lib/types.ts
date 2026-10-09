@@ -129,6 +129,10 @@ export interface BackupSettings {
 export interface Backups {
   backups: Backup[];
   total: number;
+  /** The product sells backups and this service has not bought them. */
+  locked: boolean;
+  /** Where the client orders them (client panel only). */
+  upgradeUrl: string | null;
   settings: BackupSettings;
 }
 
@@ -233,5 +237,59 @@ export interface AddonSettings {
   projectId: string;
   projects: { id: string; name: string }[];
   projectsError: string | null;
+  products: number;
+}
+
+/** One sub-option of a configurable option on the order form. */
+export interface StoreValue {
+  /** Sub-option ID, the value of the native form field. */
+  id: number;
+  /** CubePath API value ("eu-bcn-1", "ubuntu-24"). */
+  value: string;
+  label: string;
+  /** Templates only. */
+  kind?: "os" | "app";
+  /** Templates only: OS family ("ubuntu"), or the app's name. */
+  os?: string;
+}
+
+export interface StoreOption {
+  /** Configurable option ID: the native field is configoption[id]. */
+  id: number;
+  values: StoreValue[];
+}
+
+/** Order form cards of a CubePath product (addons/cubepath/lib/Store.php). */
+export interface StoreConfig {
+  mode: "store";
+  lang: string;
+  /** URL of modules/servers/cubepath/assets/ with a trailing slash. */
+  assets: string;
+  currency: { prefix: string; suffix: string };
+  /** Sub-option ID => billing cycle => price in the client's currency. */
+  prices: Record<string, Record<string, number>>;
+  options: {
+    location: StoreOption;
+    template: StoreOption;
+    network?: StoreOption;
+    backups?: StoreOption;
+  };
+  /** Custom field IDs: the native field is customfield[id]. */
+  fields: { sshKey: number | null; cloudInit: number | null };
+  backupPercent: number;
+}
+
+/** Order form settings of the addon (addons/cubepath/lib/Settings.php STORE_DEFAULTS). */
+export interface StoreSettings {
+  settings: {
+    cards: boolean;
+    sshKey: boolean;
+    cloudInit: boolean;
+    backups: boolean;
+    backupPercent: number;
+    ipv6Only: boolean;
+    ipv6OnlyDiscount: number;
+  };
+  currency: { code: string; prefix: string; suffix: string };
   products: number;
 }

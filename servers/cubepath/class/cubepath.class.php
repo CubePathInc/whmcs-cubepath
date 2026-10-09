@@ -92,14 +92,61 @@ class Cubepath
             // The API requires a root password or an SSH key; use the service password WHMCS generated
             $password = $this->servicePassword();
 
-            $result = $client->vps()->create($projectId, array(
+            $request = array(
                 'name'          => $hostname,
                 'label'         => $hostname,
                 'plan_name'     => $planName,
                 'template_name' => $template,
                 'location_name' => $location,
                 'password'      => $password,
-            ));
+            );
+
+            if ((int)CubepathHelper::getConfigurableOptionQty($this->params['serviceid'], 'backups') > 0)
+            {
+                $request['enable_backups'] = true;
+            }
+            if (CubepathHelper::getConfigurableOptionValue($this->params['serviceid'], 'network') === \CubePath\WHMCS\Addon\Products::NETWORK_IPV6_ONLY)
+            {
+                $request['ipv4'] = false;
+            }
+
+            // Windows images take neither SSH keys nor cloud-init.
+            $windows = stripos($template, 'windows') === 0;
+            // WHMCS stores order form fields HTML-encoded, which would break YAML quotes.
+            $cloudInit = trim(html_entity_decode((string)CubepathHelper::getCustomFieldValue($this->params['serviceid'], 'cloud_init'), ENT_QUOTES, 'UTF-8'));
+            if ($cloudInit !== '' && !$windows)
+            {
+                $request['custom_cloudinit'] = $cloudInit;
+            }
+
+            $createdKeyId = null;
+            $sshKey = trim(html_entity_decode((string)CubepathHelper::getCustomFieldValue($this->params['serviceid'], 'ssh_key'), ENT_QUOTES, 'UTF-8'));
+            if ($sshKey !== '' && !$windows)
+            {
+                list($keyId, $created) = $this->sshKeyId($client, $sshKey);
+                $request['ssh_key_ids'] = array($keyId);
+                $createdKeyId = $created ? $keyId : null;
+            }
+
+            try
+            {
+                $result = $client->vps()->create($projectId, $request);
+            }
+            catch (\Exception $e)
+            {
+                if ($createdKeyId)
+                {
+                    CubepathHelper::deleteSshKey($client, $createdKeyId);
+                }
+                throw $e;
+            }
+
+            // Keys created for the service are deleted with it.
+            if ($createdKeyId)
+            {
+                \CubePath\WHMCS\Addon\Products::ensureCustomFields((int)$this->params['pid']);
+                CubepathHelper::setCustomFieldValue($this->params['serviceid'], 'ssh_key_id', $createdKeyId);
+            }
 
             if (empty($result['vps_id']))
             {
@@ -212,6 +259,14 @@ class Cubepath
             }
 
             $client->vps()->destroy((int)$vpsId);
+
+            // The key stays in use until the VPS is gone; the daily cron retries what fails here.
+            $keyId = (int)CubepathHelper::getCustomFieldValue($this->params['serviceid'], 'ssh_key_id');
+            if ($keyId && CubepathHelper::deleteSshKey($client, $keyId))
+            {
+                CubepathHelper::setCustomFieldValue($this->params['serviceid'], 'ssh_key_id', '');
+            }
+
             return 'success';
         }
         catch (\Cubepath\APIError $e)
@@ -247,7 +302,16 @@ class Cubepath
                 return 'New plan name is not configured';
             }
 
-            $client->vps()->resize((int)$vpsId, $newPlan);
+            // Upgrading only configurable options (backups) keeps the plan, and resizing to it fails.
+            $vps = CubepathHelper::findVps($client, $vpsId);
+            $currentPlan = $vps && isset($vps['plan']['plan_name']) ? $vps['plan']['plan_name'] : null;
+            if ($currentPlan !== $newPlan)
+            {
+                $client->vps()->resize((int)$vpsId, $newPlan);
+            }
+
+            $this->syncBackups($client, (int)$vpsId);
+
             return 'success';
         }
         catch (\Cubepath\APIError $e)
@@ -258,6 +322,66 @@ class Cubepath
         {
             return 'Error changing package: ' . $e->getMessage();
         }
+    }
+
+    /**
+     * Turn automatic backups on or off to match what the service pays for,
+     * keeping the schedule the client chose.
+     */
+    protected function syncBackups($client, $vpsId)
+    {
+        $purchased = CubepathHelper::backupsPurchased($this->params['serviceid']);
+        if ($purchased === null)
+        {
+            return;
+        }
+
+        $settings = $client->vps()->backups()->getSettings($vpsId);
+        if (!empty($settings['enabled']) === $purchased)
+        {
+            return;
+        }
+
+        $client->vps()->backups()->updateSettings($vpsId, array(
+            'enabled'        => $purchased,
+            'schedule_hour'  => isset($settings['schedule_hour']) ? (int)$settings['schedule_hour'] : 3,
+            'retention_days' => isset($settings['retention_days']) ? (int)$settings['retention_days'] : 7,
+            'max_backups'    => isset($settings['max_backups']) ? (int)$settings['max_backups'] : 7,
+        ));
+    }
+
+    /**
+     * ID of the client's public key in the CubePath account, adding it if
+     * needed. The API refuses a key that is already there, so an existing
+     * one is reused and left in place when the service ends.
+     *
+     * @return array{0: int, 1: bool} key ID, and whether it was created now
+     */
+    protected function sshKeyId($client, $publicKey)
+    {
+        if (!CubepathHelper::validSshKey($publicKey))
+        {
+            throw new \RuntimeException('The SSH public key of the order is not valid');
+        }
+
+        $parts = preg_split('/\s+/', trim($publicKey));
+        $keys = $client->sshKeys()->list();
+        foreach (isset($keys['sshkeys']) ? $keys['sshkeys'] : array() as $key)
+        {
+            $existing = preg_split('/\s+/', trim(isset($key['ssh_key']) ? (string)$key['ssh_key'] : ''));
+            if (count($existing) >= 2 && $existing[0] === $parts[0] && $existing[1] === $parts[1])
+            {
+                return array((int)$key['id'], false);
+            }
+        }
+
+        $created = $client->sshKeys()->create('whmcs-' . (int)$this->params['serviceid'] . '-' . time(), $publicKey);
+        if (empty($created['ssh_key_id']))
+        {
+            throw new \RuntimeException('CubePath API did not return an SSH key ID');
+        }
+
+        return array((int)$created['ssh_key_id'], true);
     }
 
     /**

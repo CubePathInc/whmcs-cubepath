@@ -90,6 +90,10 @@ class AddonApi
                 return $this->saveToken($data);
             case 'saveProject':
                 return $this->saveProject($data);
+            case 'store':
+                return $this->store();
+            case 'saveStore':
+                return $this->saveStore($data);
         }
 
         throw new Exception($this->t('unknownAction'));
@@ -401,6 +405,47 @@ class AddonApi
         Settings::setDefaultProjectId($projectId);
 
         return array('updated' => !empty($data['applyToProducts']) ? Products::setProject($projectId) : null);
+    }
+
+    private function store()
+    {
+        $currency = Capsule::table('tblcurrencies')->where('default', 1)->first(array('code', 'prefix', 'suffix'));
+
+        return array(
+            'settings' => Settings::store(),
+            'currency' => array(
+                'code'   => $currency ? (string)$currency->code : '',
+                'prefix' => $currency ? (string)$currency->prefix : '',
+                'suffix' => $currency ? (string)$currency->suffix : '',
+            ),
+            'products' => count(Products::ids()),
+        );
+    }
+
+    /**
+     * Save the order form settings and apply them to every product.
+     */
+    private function saveStore(array $data)
+    {
+        $store = array();
+        foreach (array('cards', 'sshKey', 'cloudInit', 'backups', 'ipv6Only') as $flag)
+        {
+            $store[$flag] = !empty($data[$flag]);
+        }
+        foreach (array('backupPercent', 'ipv6OnlyDiscount') as $amount)
+        {
+            $value = isset($data[$amount]) ? str_replace(',', '.', trim((string)$data[$amount])) : '';
+            if (!is_numeric($value) || $value < 0 || ($amount === 'backupPercent' && $value > 1000))
+            {
+                throw new Exception($this->t('invalidPrice'));
+            }
+            $store[$amount] = (float)$value;
+        }
+
+        Settings::setStore($store);
+        Products::applyStore();
+
+        return array();
     }
 
     /**
