@@ -131,8 +131,6 @@ export interface Backups {
   total: number;
   /** The product sells backups and this service has not bought them. */
   locked: boolean;
-  /** Where the client orders them (client panel only). */
-  upgradeUrl: string | null;
   settings: BackupSettings;
 }
 
