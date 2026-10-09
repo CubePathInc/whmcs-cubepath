@@ -126,5 +126,17 @@ add_hook('ClientAreaPage', 1, function ($vars) {
         return array();
     }
 
+    // Domain renewals and pricing are routes of their own, so ClientAreaPageCart misses them.
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')
+    {
+        $route = isset($_GET['rp']) ? (string)$_GET['rp'] : (string)parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $url = ClientArea::routeRedirect($route);
+        if ($url !== null)
+        {
+            header('Location: ' . ClientArea::systemUrl() . $url);
+            exit;
+        }
+    }
+
     return array('cp' => ClientArea::templateVars($vars));
 });
