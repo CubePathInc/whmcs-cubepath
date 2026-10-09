@@ -5,7 +5,8 @@
 # Usage: bin/build-release.sh <version>
 # Output: dist/whmcs-cubepath-<version>.zip containing
 #         modules/addons/cubepath/ (with vendor/) and modules/servers/cubepath/
-#         (with the panel built from ui/)
+#         (with the panel built from ui/), templates/cubepath/ (client area
+#         theme) and templates/orderforms/cubepath_cart/ (order form)
 #
 set -euo pipefail
 
@@ -29,6 +30,7 @@ fi
 
 cp -R "$root/addons/cubepath" "$build/modules/addons/cubepath"
 cp -R "$root/servers/cubepath" "$build/modules/servers/cubepath"
+cp -R "$root/templates" "$build/templates"
 rm -rf "$build/modules/addons/cubepath/vendor"
 
 composer install \
