@@ -1,12 +1,14 @@
-import { Boxes, ChevronRight, MapPin, Package, Server, Settings, type LucideIcon } from "lucide-react";
+import { Boxes, ChevronRight, ExternalLink, LifeBuoy, MapPin, Package, Server, Settings, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/progress";
-import { ErrorState, InfoRow } from "@/components/shared";
+import { Table, TBody, THead, Td, Th, Tr } from "@/components/ui/table";
+import { EmptyState, ErrorState, InfoRow } from "@/components/shared";
 import { useQuery } from "@/lib/api";
 import type { AddonDashboard } from "@/lib/types";
-import { useT } from "@/i18n";
+import { formatDate } from "@/lib/utils";
+import { useLocale, useT } from "@/i18n";
 import { useNavigate, type AddonPage } from "./AddonApp";
 
 export function DashboardPage() {
@@ -125,6 +127,89 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <TicketsCard tickets={d.tickets} />
     </div>
+  );
+}
+
+function TicketsCard({ tickets }: { tickets: AddonDashboard["tickets"] }) {
+  const t = useT();
+  const locale = useLocale();
+  const more = tickets.total - tickets.items.length;
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <CardTitle className="flex items-center gap-2">
+            {t("addon.dashboard.tickets")}
+            {tickets.total > 0 && <Badge variant="secondary">{tickets.total}</Badge>}
+          </CardTitle>
+          <CardDescription>{t("addon.dashboard.ticketsHint")}</CardDescription>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => window.location.assign("supporttickets.php")}>
+          <ExternalLink />
+          {t("addon.dashboard.ticketsAll")}
+        </Button>
+      </CardHeader>
+      {tickets.items.length === 0 ? (
+        <EmptyState icon={LifeBuoy} title={t("addon.dashboard.ticketsEmpty")} />
+      ) : (
+        <>
+          <Table>
+            <THead>
+              <Tr className="hover:bg-transparent">
+                <Th>{t("addon.dashboard.ticketSubject")}</Th>
+                <Th>{t("addon.dashboard.ticketClient")}</Th>
+                <Th>{t("addon.dashboard.ticketService")}</Th>
+                <Th>{t("addon.dashboard.ticketStatus")}</Th>
+                <Th className="text-right">{t("addon.dashboard.ticketLastReply")}</Th>
+              </Tr>
+            </THead>
+            <TBody>
+              {tickets.items.map((ticket) => (
+                <Tr key={ticket.id}>
+                  <Td>
+                    <a href={`supporttickets.php?action=view&id=${ticket.id}`} className="font-medium hover:underline">
+                      {ticket.title}
+                    </a>
+                    <div className="text-xs text-muted-foreground">
+                      #{ticket.tid} · {ticket.priority}
+                    </div>
+                  </Td>
+                  <Td>
+                    <a href={`clientssummary.php?userid=${ticket.client.id}`} className="hover:underline">
+                      {ticket.client.name}
+                    </a>
+                  </Td>
+                  <Td>
+                    {ticket.service ? (
+                      <a href={`clientsservices.php?userid=${ticket.client.id}&id=${ticket.service.id}`} className="inline-flex items-center gap-1.5 hover:underline">
+                        <Server className="h-3.5 w-3.5 text-muted-foreground" />
+                        {ticket.service.label}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </Td>
+                  <Td>
+                    <Badge variant="outline" style={{ color: ticket.color, borderColor: `${ticket.color}55` }}>
+                      {ticket.status}
+                    </Badge>
+                  </Td>
+                  <Td className="text-right text-muted-foreground tabular-nums">{formatDate(ticket.lastReply, locale)}</Td>
+                </Tr>
+              ))}
+            </TBody>
+          </Table>
+          {more > 0 && (
+            <a href="supporttickets.php" className="block border-t px-6 py-3 text-center text-xs text-muted-foreground hover:text-foreground">
+              {t("addon.dashboard.ticketsMore", { count: more })}
+            </a>
+          )}
+        </>
+      )}
+    </Card>
   );
 }
