@@ -1,0 +1,11 @@
+# CubePath order form: VPS plans as cards, on top of Standard Cart.
+
+name: "CubePath Cart"
+description: "VPS plan cards for CubePath products"
+author: "CubePath"
+config:
+  parent: standard_cart
+dependencies:
+  bootstrap: 3||4
+  jquery: 1.12
+  fontawesome: 5

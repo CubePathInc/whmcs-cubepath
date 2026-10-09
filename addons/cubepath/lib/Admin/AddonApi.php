@@ -3,6 +3,7 @@
 namespace CubePath\WHMCS\Addon\Admin;
 
 use CubePath\WHMCS\Addon\Catalog;
+use CubePath\WHMCS\Addon\ClientArea;
 use CubePath\WHMCS\Addon\Products;
 use CubePath\WHMCS\Addon\Projects;
 use CubePath\WHMCS\Addon\Servers;
@@ -94,6 +95,19 @@ class AddonApi
                 return $this->store();
             case 'saveStore':
                 return $this->saveStore($data);
+            case 'clientArea':
+                return $this->clientArea();
+            case 'saveClientArea':
+                if (!empty($data['enabled']))
+                {
+                    ClientArea::enable();
+                }
+                else
+                {
+                    ClientArea::disable();
+                }
+
+                return $this->clientArea();
         }
 
         throw new Exception($this->t('unknownAction'));
@@ -446,6 +460,16 @@ class AddonApi
         Products::applyStore();
 
         return array();
+    }
+
+    private function clientArea()
+    {
+        return array(
+            'enabled'            => ClientArea::enabled(),
+            'theme'              => (string)Capsule::table('tblconfiguration')->where('setting', 'Template')->value('value'),
+            'themeInstalled'     => ClientArea::themeInstalled(),
+            'orderFormInstalled' => ClientArea::orderFormInstalled(),
+        );
     }
 
     /**

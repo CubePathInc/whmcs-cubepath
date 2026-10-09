@@ -172,7 +172,7 @@ class Products
             'name'             => $name,
             'headline'         => '',
             'tagline'          => '',
-            'orderfrmtpl'      => '',
+            'orderfrmtpl'      => ClientArea::orderFormInstalled() ? ClientArea::ORDER_FORM : '',
             'disabledgateways' => '',
             'hidden'           => 0,
             'order'            => (int)Capsule::table('tblproductgroups')->max('order') + 1,
@@ -513,6 +513,7 @@ class Products
             {
                 self::ensureCustomFields($productId);
                 self::syncConfigurableOptions($productId, $catalog);
+                self::upgradeDescription($productId, $catalog);
             }
             catch (\Exception $e)
             {
@@ -521,6 +522,41 @@ class Products
         }
 
         return $errors;
+    }
+
+    /**
+     * Products created before 1.0 have a one-line description
+     * ("gp.nano: 1 vCPU, 2 GB RAM, ..."), which the order form shows as a
+     * single feature. Rewrite it as one line per resource, unless the admin
+     * changed it.
+     */
+    private static function upgradeDescription($productId, Catalog $catalog)
+    {
+        $product = Capsule::table('tblproducts')->where('id', $productId)->first(array('description', 'configoption2'));
+        $plan = $product ? $catalog->plan($product->configoption2) : null;
+        if (!$plan)
+        {
+            return;
+        }
+
+        $ram = $plan['ram_mb'] >= 1024 ? round($plan['ram_mb'] / 1024, 1) . ' GB' : $plan['ram_mb'] . ' MB';
+        $old = sprintf('%s: %d vCPU, %s RAM, %d GB disk, %d TB transfer', $plan['plan_name'], $plan['cpu'], $ram, $plan['storage_gb'], $plan['bandwidth_tb']);
+
+        $new = Catalog::describePlan($plan);
+        if (trim((string)$product->description) === $old)
+        {
+            Capsule::table('tblproducts')->where('id', $productId)->update(array('description' => $new));
+        }
+
+        // With translations on, WHMCS keeps a copy per language and shows that one.
+        if (Capsule::schema()->hasTable('tbldynamic_translations'))
+        {
+            Capsule::table('tbldynamic_translations')
+                ->where('related_type', 'product.{id}.description')
+                ->where('related_id', $productId)
+                ->where('translation', $old)
+                ->update(array('translation' => $new));
+        }
     }
 
     /**

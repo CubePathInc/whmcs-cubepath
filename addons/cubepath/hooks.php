@@ -10,6 +10,7 @@
  */
 
 use CubePath\WHMCS\Addon\Catalog;
+use CubePath\WHMCS\Addon\ClientArea;
 use CubePath\WHMCS\Addon\Products;
 use CubePath\WHMCS\Addon\Settings;
 
@@ -62,4 +63,68 @@ add_hook('AfterCronJob', 1, function ($vars) {
         // Retried on the next run; the stock timestamp is only updated on success.
         logActivity('CubePath: could not read the catalog to update stock: ' . $e->getMessage());
     }
+});
+
+/**
+ * CubePath client area (Addons > CubePath > Settings > Client area): a menu
+ * with only the VPS and their management, the VPS groups in the cart, and
+ * the data the cubepath theme shows as {$cp}.
+ */
+function cubepath_client_area()
+{
+    static $enabled;
+    if ($enabled === null)
+    {
+        $enabled = false;
+        if (file_exists(__DIR__ . '/vendor/autoload.php'))
+        {
+            require_once __DIR__ . '/vendor/autoload.php';
+            $enabled = ClientArea::enabled();
+        }
+    }
+
+    return $enabled;
+}
+
+add_hook('ClientAreaPrimaryNavbar', 1, function ($navbar) {
+    if (cubepath_client_area())
+    {
+        ClientArea::primaryNavbar($navbar, !empty($_SESSION['uid']));
+    }
+});
+
+add_hook('ClientAreaSecondarySidebar', 1, function ($sidebar) {
+    if (cubepath_client_area() && defined('SHOPPING_CART'))
+    {
+        ClientArea::cartSidebar($sidebar);
+    }
+});
+
+add_hook('ClientAreaPageCart', 1, function ($vars) {
+    if (!cubepath_client_area() || $_SERVER['REQUEST_METHOD'] !== 'GET')
+    {
+        return;
+    }
+
+    $query = $_GET;
+    if (!empty($vars['productGroup']['id']))
+    {
+        $query['gid'] = $vars['productGroup']['id'];
+    }
+
+    $url = ClientArea::cartRedirect($query);
+    if ($url !== null)
+    {
+        header('Location: ' . ClientArea::systemUrl() . $url);
+        exit;
+    }
+});
+
+add_hook('ClientAreaPage', 1, function ($vars) {
+    if (!cubepath_client_area())
+    {
+        return array();
+    }
+
+    return array('cp' => ClientArea::templateVars($vars));
 });

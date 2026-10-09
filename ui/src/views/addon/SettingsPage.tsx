@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/toast";
 import { ErrorState, InfoRow } from "@/components/shared";
 import { callApi, useConfig, useQuery } from "@/lib/api";
-import type { AddonSettings, StoreSettings } from "@/lib/types";
+import type { AddonSettings, ClientAreaSettings, StoreSettings } from "@/lib/types";
 import { useT } from "@/i18n";
 
 export function SettingsPage() {
@@ -28,6 +28,7 @@ export function SettingsPage() {
       <TokenCard settings={query.data} reload={query.reload} />
       <ProjectCard settings={query.data} reload={query.reload} />
       <StoreCard />
+      <ClientAreaCard />
     </div>
   );
 }
@@ -263,6 +264,55 @@ function StoreCard() {
             {t("common.save")}
           </Button>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ClientAreaCard() {
+  const t = useT();
+  const config = useConfig();
+  const toast = useToast();
+  const query = useQuery<ClientAreaSettings>("addon.clientArea");
+  const [busy, setBusy] = useState(false);
+
+  if (query.error && !query.data) return <ErrorState message={query.error} onRetry={query.reload} />;
+  if (!query.data) return <Skeleton className="h-48 rounded-xl" />;
+
+  const { enabled, theme, themeInstalled, orderFormInstalled } = query.data;
+  const installed = themeInstalled && orderFormInstalled;
+
+  const change = async (value: boolean) => {
+    setBusy(true);
+    try {
+      await callApi(config, "addon.saveClientArea", { enabled: value });
+      toast.success(t(value ? "addon.clientArea.enabled" : "addon.clientArea.disabled"));
+      await query.reload();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card className="@lg:col-span-2">
+      <CardHeader>
+        <CardTitle>{t("addon.clientArea.title")}</CardTitle>
+        <CardDescription>{t("addon.clientArea.hint")}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium">{t("addon.clientArea.enable")}</span>
+            <span className="text-xs text-muted-foreground">{t("addon.clientArea.enableHint")}</span>
+          </div>
+          <Switch checked={enabled} disabled={busy || (!enabled && !installed)} onCheckedChange={change} aria-label={t("addon.clientArea.enable")} />
+        </div>
+        <InfoRow label={t("addon.clientArea.current")}>
+          <span className="font-mono">{theme || "-"}</span>
+        </InfoRow>
+        {!installed && <p className="text-xs text-destructive">{t("addon.clientArea.missing")}</p>}
       </CardContent>
     </Card>
   );

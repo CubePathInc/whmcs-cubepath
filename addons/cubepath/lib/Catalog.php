@@ -209,18 +209,20 @@ class Catalog
         });
     }
 
+    /**
+     * Product description: one "Name: value" line per resource, which the
+     * order form lists as the plan's features.
+     */
     public static function describePlan(array $plan)
     {
         $ram = $plan['ram_mb'] >= 1024 ? round($plan['ram_mb'] / 1024, 1) . ' GB' : $plan['ram_mb'] . ' MB';
 
-        return sprintf(
-            '%s: %d vCPU, %s RAM, %d GB disk, %d TB transfer',
-            $plan['plan_name'],
-            $plan['cpu'],
-            $ram,
-            $plan['storage_gb'],
-            $plan['bandwidth_tb']
-        );
+        return implode("\n", array(
+            'vCPU: ' . $plan['cpu'],
+            'RAM: ' . $ram,
+            'Disk: ' . $plan['storage_gb'] . ' GB NVMe',
+            'Transfer: ' . $plan['bandwidth_tb'] . ' TB',
+        ));
     }
 
     private function listOf($array, $key)

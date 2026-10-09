@@ -279,6 +279,13 @@ export interface StoreConfig {
   backupPercent: number;
 }
 
+export interface ClientAreaSettings {
+  enabled: boolean;
+  theme: string;
+  themeInstalled: boolean;
+  orderFormInstalled: boolean;
+}
+
 /** Order form settings of the addon (addons/cubepath/lib/Settings.php STORE_DEFAULTS). */
 export interface StoreSettings {
   settings: {

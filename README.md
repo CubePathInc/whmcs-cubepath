@@ -20,10 +20,10 @@ Download `whmcs-cubepath-<version>.zip` from the [latest release](https://github
 
 ```bash
 cd /path/to/whmcs
-unzip whmcs-cubepath-<version>.zip 'modules/*'
+unzip whmcs-cubepath-<version>.zip 'modules/*' 'templates/*'
 ```
 
-This creates `modules/addons/cubepath/` (including `vendor/`) and `modules/servers/cubepath/`.
+This creates `modules/addons/cubepath/` (including `vendor/`), `modules/servers/cubepath/`, and the optional client area: `templates/cubepath/` and `templates/orderforms/cubepath_cart/`.
 
 ### 2. Add a CubePath server
 
@@ -148,6 +148,17 @@ Backups and network are configurable options; the SSH key and cloud-init are cus
 
 The **CubePath-style configurator** replaces the cart's fields with cards like the CubePath dashboard: locations with flags, operating systems with their versions, applications, network, backups, hostname and password. It drives the cart's own fields, so prices, validation and checkout work as usual with any order form template; if it cannot load, the native fields are shown.
 
+## Client Area
+
+**Addons > CubePath > Settings > Client area** turns the WHMCS client area into one made for selling VPS:
+
+- The **CubePath** theme (`templates/cubepath`, a child of Twenty-One) becomes the system theme: a sidebar and top bar like the CubePath dashboard, an overview with the client's VPS (IP, location, status) and unpaid invoices, a VPS list, and a homepage with the VPS groups and their starting price. Every other page comes from Twenty-One, restyled.
+- The menu keeps only the overview, the VPS, deploying a new one (one entry per product group), billing and support. Domains, website security, announcements, the knowledgebase and the like are left out.
+- The cart only sells CubePath VPS: other product groups, domain registration, transfers and renewals send the client to the first VPS group.
+- The **CubePath Cart** order form (`templates/orderforms/cubepath_cart`, a child of Standard Cart) shows each group's plans as cards with their resources and tabs for the other groups. The Product Creator sets it on the groups it creates, and turning the client area on sets it on the existing ones.
+
+Turning it off restores the theme used before; the order form stays, since it works with any theme. The plan cards read the resources from the product description, one `Name: value` line each (`vCPU: 2`, `RAM: 4 GB`...), which is how the Product Creator writes it; **Sync products** rewrites the one-line descriptions of products created by older versions.
+
 ## Directory Structure
 
 ```
@@ -157,9 +168,14 @@ whmcs-cubepath/
 │   ├── cubepath.php            # Addon entry point (config, activate, output)
 │   ├── hooks.php               # WHMCS hooks
 │   ├── composer.json           # SDK dependency and autoload (vendor/ is built, not committed)
-│   ├── lib/                    # Settings, Catalog, Products, Admin\AddonApi
+│   ├── lib/                    # Settings, Catalog, Products, Admin\Controller
 │   ├── lang/                   # Language files
+│   ├── views/admin/            # Admin page templates
 │   └── whmcs.json, logo.png    # Metadata shown in Apps & Integrations
+│
+├── templates/
+│   ├── cubepath/                # Client area theme (child of Twenty-One)
+│   └── orderforms/cubepath_cart/ # Order form with plan cards (child of Standard Cart)
 │
 └── servers/cubepath/
     ├── cubepath.php             # Server module entry point
