@@ -164,10 +164,10 @@ export function PasswordField({ value, onChange, id }: { value: string; onChange
   );
 }
 
-/** At least 8 characters with letters and digits, as the API requires. */
+/** At least 8 characters with uppercase, lowercase and digits, as the API requires. */
 export function passwordProblem(value: string, t: ReturnType<typeof useT>): string | null {
   if (value.length < 8) return t("password.tooShort");
-  if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) return t("password.weak");
+  if (!/[A-Z]/.test(value) || !/[a-z]/.test(value) || !/\d/.test(value)) return t("password.weak");
   return null;
 }
 
