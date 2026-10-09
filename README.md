@@ -154,6 +154,7 @@ The **CubePath-style configurator** replaces the cart's fields with cards like t
 
 - The **CubePath** theme (`templates/cubepath`, a child of Twenty-One) becomes the system theme: a sidebar and top bar like the CubePath dashboard, an overview with the client's VPS (IP, location, status) and unpaid invoices, a VPS list, and a homepage with the VPS groups and their starting price. Every other page comes from Twenty-One, restyled.
 - The menu keeps only the overview, the VPS, deploying a new one (one entry per product group), billing and support. Domains, website security, announcements, the knowledgebase and the like are left out.
+- Support tickets are WHMCS's own, with pages of the theme: a list with status filters and the VPS each ticket is about, the conversation with the staff replies marked, and the new ticket form. The VPS panel has an **Open a ticket** button that opens the form with that VPS chosen. You answer them from **Support > Support Tickets** in the admin area, as usual; departments, email notifications and piping stay as WHMCS sets them.
 - The cart only sells CubePath VPS: other product groups, domain registration, transfers and renewals send the client to the first VPS group.
 - The **CubePath Cart** order form (`templates/orderforms/cubepath_cart`, a child of Standard Cart) shows each group's plans as cards with their resources and tabs for the other groups. The Product Creator sets it on the groups it creates, and turning the client area on sets it on the existing ones.
 

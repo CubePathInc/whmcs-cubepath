@@ -130,13 +130,6 @@
                     <i class="fas fa-shopping-cart"></i>
                     <span id="cartItemCount" class="cp-dot-badge{if !$cartitemcount} d-none{/if}">{$cartitemcount}</span>
                 </a>
-
-                {if $adminMasqueradingAsClient || $adminLoggedIn}
-                    <a href="{$WEB_ROOT}/logout.php?returntoadmin=1" class="btn btn-default btn-sm cp-return-admin" title="{if $adminMasqueradingAsClient}{lang key='adminmasqueradingasclient'} {lang key='logoutandreturntoadminarea'}{else}{lang key='adminloggedin'} {lang key='returntoadminarea'}{/if}">
-                        <i class="fas fa-redo-alt"></i>
-                        <span class="d-none d-md-inline">{lang key="admin.returnToAdmin"}</span>
-                    </a>
-                {/if}
             </div>
         </header>
 

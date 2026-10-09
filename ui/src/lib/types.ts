@@ -6,6 +6,8 @@ export interface PanelConfig {
   token: string;
   lang: string;
   serviceId?: number;
+  /** New ticket page for the service (client view). */
+  ticketUrl?: string;
   /** Admin URL of a service, with {userid} and {id} placeholders (reseller view). */
   serviceUrl?: string;
   /** Page the addon panel opens on. */

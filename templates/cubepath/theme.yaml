@@ -1,8 +1,8 @@
 # CubePath client area theme for VPS resellers.
 #
-# A child of Twenty-One: only the layout, the overview, the VPS list and
-# the homepage are its own, every other page comes from the parent theme
-# and is restyled by css/custom.css.
+# A child of Twenty-One: only the layout, the overview, the VPS list, the
+# support ticket pages and the homepage are its own, every other page comes
+# from the parent theme and is restyled by css/custom.css.
 
 name: "CubePath"
 description: "Client area for CubePath VPS resellers"

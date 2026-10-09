@@ -1,0 +1,302 @@
+/*
+ * Support pages of the CubePath theme: tickets list, new ticket and the
+ * ticket conversation. Uses the tokens of custom.css.
+ */
+
+.cp-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.cp-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--cp-border);
+    border-radius: 999px;
+    background: var(--cp-card);
+    color: var(--cp-muted-fg);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+.cp-filter span {
+    color: var(--cp-muted-fg);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.cp-filter:hover {
+    color: var(--cp-fg);
+}
+.cp-filter.active {
+    border-color: var(--cp-primary);
+    background: var(--cp-primary);
+    color: var(--cp-primary-fg);
+}
+.cp-filter.active span {
+    color: inherit;
+    opacity: .7;
+}
+
+.cp-tickets td {
+    vertical-align: middle;
+}
+.cp-ticket-subject {
+    display: block;
+    color: var(--cp-fg) !important;
+    font-weight: 500;
+}
+.cp-ticket-subject.unread {
+    font-weight: 700;
+}
+.cp-ticket-subject.unread::after {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: var(--cp-info);
+    vertical-align: middle;
+}
+.cp-tickets small {
+    color: var(--cp-muted-fg);
+    font-size: 12px;
+}
+.cp-ticket-service {
+    color: var(--cp-muted-fg);
+    font-size: 13px;
+    white-space: nowrap;
+}
+.cp-ticket-service i {
+    margin-right: 4px;
+    font-size: 11px;
+}
+
+.cp-departments {
+    display: grid;
+    gap: 12px;
+    max-width: 720px;
+}
+.cp-department {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+}
+.cp-department > span:nth-child(2) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+}
+.cp-department small {
+    color: var(--cp-muted-fg);
+}
+.cp-department > .fa-chevron-right {
+    color: var(--cp-muted-fg);
+    font-size: 12px;
+}
+.cp-department-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--cp-radius-sm);
+    background: var(--cp-muted);
+}
+a.cp-card.cp-department:hover {
+    border-color: #d4d4d4;
+    box-shadow: var(--cp-shadow-lg);
+}
+
+.cp-ticket-form {
+    padding: 24px;
+}
+.cp-ticket-form h2 {
+    margin: 0 0 16px;
+    font-size: 15px;
+    font-weight: 600;
+}
+.cp-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
+}
+.cp-ticket-ok {
+    color: var(--cp-success);
+}
+
+.cp-ticket-title {
+    min-width: 0;
+}
+.cp-ticket-title h1 {
+    overflow-wrap: anywhere;
+}
+.cp-back {
+    display: inline-block;
+    margin-bottom: 8px;
+    color: var(--cp-muted-fg) !important;
+    font-size: 13px;
+}
+.cp-ticket-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.cp-ticket-meta {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 24px;
+}
+.cp-ticket-meta > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    min-width: 0;
+    padding: 14px 20px;
+    border-left: 1px solid var(--cp-border);
+}
+.cp-ticket-meta > div:first-child {
+    border-left: 0;
+}
+.cp-ticket-meta > div > span:first-child {
+    color: var(--cp-muted-fg);
+    font-size: 12px;
+}
+.cp-ticket-meta strong,
+.cp-ticket-meta a {
+    overflow: hidden;
+    max-width: 100%;
+    font-size: 14px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cp-ticket-meta a {
+    color: var(--cp-fg) !important;
+}
+.cp-ticket-meta a i {
+    margin-right: 4px;
+    color: var(--cp-muted-fg);
+    font-size: 11px;
+}
+
+.cp-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.cp-message {
+    display: flex;
+    gap: 12px;
+}
+.cp-message .cp-avatar {
+    flex-shrink: 0;
+}
+.cp-message.staff .cp-avatar {
+    background: var(--cp-info-bg);
+    color: var(--cp-info);
+}
+.cp-message-body {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius);
+    background: var(--cp-card);
+    box-shadow: var(--cp-shadow);
+}
+.cp-message.staff .cp-message-body {
+    border-color: #bfdbfe;
+    background: #f8fbff;
+}
+.cp-message-body header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    padding: 12px 16px 0;
+    font-size: 13px;
+}
+.cp-requestor {
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--cp-muted);
+    color: var(--cp-muted-fg);
+    font-size: 11px;
+    font-weight: 500;
+}
+.cp-message.staff .cp-requestor {
+    background: var(--cp-info-bg);
+    color: var(--cp-info);
+}
+.cp-message-body time {
+    margin-left: auto;
+    color: var(--cp-muted-fg);
+    font-size: 12px;
+}
+.cp-message-text {
+    padding: 10px 16px 14px;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+.cp-message-text > :last-child {
+    margin-bottom: 0;
+}
+.cp-message-text pre,
+.cp-message-text code {
+    font-family: var(--cp-mono);
+}
+.cp-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px 14px;
+}
+.cp-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    background: var(--cp-card);
+    color: var(--cp-fg) !important;
+    font-size: 12px;
+}
+.cp-attachment.removed {
+    color: var(--cp-muted-fg) !important;
+    text-decoration: line-through;
+}
+.cp-rating {
+    padding: 0 16px 12px;
+}
+
+@media (max-width: 767.98px) {
+    .cp-ticket-meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .cp-ticket-meta > div:nth-child(3) {
+        border-left: 0;
+    }
+    .cp-ticket-meta > div:nth-child(n+3) {
+        border-top: 1px solid var(--cp-border);
+    }
+    .cp-message .cp-avatar {
+        display: none;
+    }
+    .cp-message-body time {
+        width: 100%;
+        margin-left: 0;
+    }
+}

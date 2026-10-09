@@ -437,8 +437,118 @@ class ClientArea
             $data['services'] = self::services($clientId, $template === 'clientareaproducts');
             $data['invoices'] = self::unpaidInvoices($clientId);
         }
+        if ($clientId && $template === 'supportticketslist' && !empty($vars['tickets']))
+        {
+            $data['ticketServices'] = self::ticketServices($clientId, array_column($vars['tickets'], 'id'));
+        }
+        if ($template === 'viewticket' && !empty($vars['id']))
+        {
+            $data['ticket'] = self::ticket((int)$vars['id'], $clientId);
+        }
 
         return $data;
+    }
+
+    /**
+     * The ticket pages bring their own layout (filters, ticket details), so
+     * the Twenty-One sidebars are left out there.
+     */
+    public static function supportPage()
+    {
+        $script = basename((string)(isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : ''));
+
+        return in_array($script, array('supporttickets.php', 'submitticket.php', 'viewticket.php'), true);
+    }
+
+    public static function clearSidebar($sidebar)
+    {
+        foreach ($sidebar->getChildren() as $child)
+        {
+            $sidebar->removeChild($child->getName());
+        }
+    }
+
+    /**
+     * The service each ticket is about, by ticket id, as {id, label}.
+     */
+    private static function ticketServices($clientId, array $ticketIds)
+    {
+        $rows = Capsule::table('tbltickets')
+            ->where('userid', $clientId)
+            ->whereIn('id', array_map('intval', $ticketIds))
+            ->where('service', 'like', 'S%')
+            ->pluck('service', 'id')
+            ->all();
+
+        $services = self::serviceLabels($clientId, $rows);
+        $result = array();
+        foreach ($rows as $ticketId => $service)
+        {
+            $id = (int)substr($service, 1);
+            if (isset($services[$id]))
+            {
+                $result[$ticketId] = array('id' => $id, 'label' => $services[$id]);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Status class and related service of the ticket being viewed; WHMCS
+     * only gives the status as translated HTML.
+     */
+    private static function ticket($ticketId, $clientId)
+    {
+        $row = Capsule::table('tbltickets')->where('id', $ticketId)->first(array('userid', 'status', 'service'));
+        if (!$row)
+        {
+            return array();
+        }
+
+        $data = array('statusClass' => preg_replace('/[^a-z0-9]+/', '-', strtolower((string)$row->status)), 'service' => null);
+        if ($clientId && (int)$row->userid === $clientId && preg_match('/^S(\d+)$/', (string)$row->service, $m))
+        {
+            $labels = self::serviceLabels($clientId, array($row->service));
+            if (isset($labels[(int)$m[1]]))
+            {
+                $data['service'] = array('id' => (int)$m[1], 'label' => $labels[(int)$m[1]]);
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Hostname, or product name, of the client's services given as "S<id>".
+     */
+    private static function serviceLabels($clientId, array $services)
+    {
+        $ids = array();
+        foreach ($services as $service)
+        {
+            if (preg_match('/^S(\d+)$/', (string)$service, $m))
+            {
+                $ids[] = (int)$m[1];
+            }
+        }
+        if (!$ids)
+        {
+            return array();
+        }
+
+        $labels = array();
+        $rows = Capsule::table('tblhosting as h')
+            ->join('tblproducts as p', 'p.id', '=', 'h.packageid')
+            ->where('h.userid', $clientId)
+            ->whereIn('h.id', array_unique($ids))
+            ->get(array('h.id', 'h.domain', 'p.name'));
+        foreach ($rows as $row)
+        {
+            $labels[(int)$row->id] = trim((string)$row->domain) !== '' ? (string)$row->domain : (string)$row->name;
+        }
+
+        return $labels;
     }
 
     /**
@@ -615,6 +725,17 @@ class ClientArea
             'specs'          => 'Recursos',
             'order'          => 'Contratar',
             'menu'           => 'Menú',
+            'ticketsSub'     => 'Abre un ticket y te responderemos por aquí y por email.',
+            'all'            => 'Todos',
+            'noTickets'      => 'No tienes ningún ticket',
+            'noTicketsSub'   => '¿Necesitas ayuda con un servidor o una factura? Abre un ticket.',
+            'service'        => 'Servicio',
+            'staff'          => 'Soporte',
+            'you'            => 'Tú',
+            'opened'         => 'Abierto el %s',
+            'newTicketSub'   => 'Cuéntanos qué pasa. Si es sobre un servidor, elígelo para que podamos revisarlo antes.',
+            'departmentSub'  => 'Elige el departamento que mejor encaje con tu consulta.',
+            'backToTickets'  => 'Volver a los tickets',
         ) : array(
             'home'           => 'Home',
             'overview'       => 'Overview',
@@ -669,6 +790,17 @@ class ClientArea
             'specs'          => 'Resources',
             'order'          => 'Order',
             'menu'           => 'Menu',
+            'ticketsSub'     => 'Open a ticket and we will answer here and by email.',
+            'all'            => 'All',
+            'noTickets'      => 'You have no tickets',
+            'noTicketsSub'   => 'Need help with a server or an invoice? Open a ticket.',
+            'service'        => 'Service',
+            'staff'          => 'Support',
+            'you'            => 'You',
+            'opened'         => 'Opened %s',
+            'newTicketSub'   => 'Tell us what is going on. If it is about a server, pick it so we can look at it first.',
+            'departmentSub'  => 'Choose the department that best fits your question.',
+            'backToTickets'  => 'Back to tickets',
         );
     }
 
