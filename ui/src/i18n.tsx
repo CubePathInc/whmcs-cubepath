@@ -20,7 +20,7 @@ const en = {
   "common.status": "Status",
 
   "password.tooShort": "Use at least 8 characters.",
-  "password.weak": "Use letters and numbers.",
+  "password.weak": "Use uppercase and lowercase letters and numbers.",
 
   "status.active": "Running",
   "status.stopped": "Stopped",
@@ -474,7 +474,7 @@ const es: Partial<Dictionary> = {
   "common.status": "Estado",
 
   "password.tooShort": "Usa al menos 8 caracteres.",
-  "password.weak": "Usa letras y números.",
+  "password.weak": "Usa mayúsculas, minúsculas y números.",
 
   "status.active": "Encendido",
   "status.stopped": "Apagado",
