@@ -1,4 +1,4 @@
-export type Mode = "client" | "admin" | "reseller";
+export type Mode = "client" | "admin" | "reseller" | "addon";
 
 export interface PanelConfig {
   mode: Mode;
@@ -8,6 +8,8 @@ export interface PanelConfig {
   serviceId?: number;
   /** Admin URL of a service, with {userid} and {id} placeholders (reseller view). */
   serviceUrl?: string;
+  /** Page the addon panel opens on. */
+  page?: string;
 }
 
 export type VpsStatus =
@@ -166,4 +168,70 @@ export interface ResellerServer {
   domain: string;
   serviceStatus: string;
   vps: Vps | null;
+}
+
+export interface ServerRef {
+  id: number;
+  name: string;
+}
+
+export interface AddonDashboard {
+  apiError: string | null;
+  server: ServerRef | null;
+  legacyToken: boolean;
+  projectId: string;
+  projectName: string | null;
+  plans: number;
+  locations: number;
+  templates: number;
+  products: number;
+  services: number;
+}
+
+export interface CatalogPlan {
+  name: string;
+  /** CubePath cluster the plan runs on ("General Purpose"). */
+  family: string;
+  cpu: number;
+  ramMb: number;
+  storageGb: number;
+  transferTb: number;
+  monthly: number;
+  locations: string[];
+  available: boolean;
+  exists: boolean;
+}
+
+export interface CreatorData {
+  projectId: string;
+  plans: CatalogPlan[];
+  groups: { id: number; name: string }[];
+  /** Family => name of the product group the creator made for it. */
+  familyGroups: Record<string, string>;
+  currencies: { id: number; code: string; prefix: string; default: boolean }[];
+}
+
+export interface AddonProduct {
+  id: number;
+  name: string;
+  group: string;
+  plan: string;
+  paytype: "recurring" | "onetime" | "free";
+  hidden: boolean;
+  retired: boolean;
+  services: number;
+}
+
+export interface ToggleData {
+  items: { value: string; label: string; type: "location" | "os" | "app" }[];
+  disabled: string[];
+}
+
+export interface AddonSettings {
+  server: ServerRef | null;
+  tokenHint: string;
+  projectId: string;
+  projects: { id: string; name: string }[];
+  projectsError: string | null;
+  products: number;
 }

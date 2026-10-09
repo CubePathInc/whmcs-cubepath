@@ -38,7 +38,8 @@ Products use the token of the CubePath server in their server group, so it is ke
 
 1. Go to **WHMCS Admin > System Settings > Addon Modules**
 2. Find **CubePath** and click **Activate**
-3. Click **Configure**, choose the **Default Project** used by the Product Creator, grant admin access and click **Save Changes**
+3. Click **Configure**, grant admin access and click **Save Changes**
+4. Go to **Addons > CubePath > Settings** and choose the **Default Project** used by the Product Creator. The API token can also be changed there
 
 ### Installing from source
 
@@ -56,16 +57,17 @@ cp -r servers/cubepath/assets/ /path/to/whmcs/modules/servers/cubepath/assets/
 
 ### Addon Module (Admin Panel)
 
-Access via **WHMCS Admin > Addons > CubePath**.
+Access via **WHMCS Admin > Addons > CubePath**. Every page is part of the same panel as the client area, built from `ui/`.
 
 | Page | Description |
 |------|-------------|
 | **Dashboard** | API connection status, configured project and catalog size |
-| **Servers** | Every CubePath service with its live status, resources and client; search, filter and run start, stop, reboot, suspend or unsuspend on several at once |
+| **VPS** | Every CubePath service with its live status, resources and client; search, filter and run start, stop, reboot, suspend or unsuspend on several at once |
 | **Product Creator** | Create a WHMCS product for one CubePath plan, or for every available plan at once |
 | **Products** | List CubePath products with their service count, and sync new locations and templates into them |
 | **Locations** | Choose which locations clients can order |
 | **Templates** | Choose which operating systems and applications clients can order |
+| **Settings** | Change the API token (checked against the API, saved to the CubePath server) and the default project, optionally applying it to existing products |
 
 Plans, locations and templates come from the CubePath API, so new ones show up without updating the module.
 
@@ -123,7 +125,11 @@ The panel is a React app built from `ui/` into `servers/cubepath/assets/dist/app
 
 ### With the Product Creator
 
-**Addons > CubePath > Product Creator** does the same for one plan, or for every available plan at once with a markup over CubePath's prices. Products are assigned to the CubePath server group and set up automatically on payment.
+**Addons > CubePath > Products > Product Creator** does the same for one plan, or for every available plan at once with a markup over CubePath's prices. Products are assigned to the CubePath server group and set up automatically on payment.
+
+Each product goes in a product group, the categories of the store. **Create all plans** always puts each plan in the group of its family (gp.* in General Purpose, rz.* in High Frecuency, dc.* in Dedicated CPU...). A single product can go there too, or in a group chosen in the form. Family groups are created the first time and keep receiving their family's products if renamed.
+
+Every location where a plan exists gets an option. Locations where the plan is sold out are hidden from the order form, and the WHMCS cron checks CubePath's stock every 15 minutes to show them again when restocked.
 
 Prices of the configurable options start at zero; adjust them from **System Settings > Configurable Options** if you want to charge for a location or template.
 
@@ -136,9 +142,8 @@ whmcs-cubepath/
 │   ├── cubepath.php            # Addon entry point (config, activate, output)
 │   ├── hooks.php               # WHMCS hooks
 │   ├── composer.json           # SDK dependency and autoload (vendor/ is built, not committed)
-│   ├── lib/                    # Settings, Catalog, Products, Admin\Controller
+│   ├── lib/                    # Settings, Catalog, Products, Admin\AddonApi
 │   ├── lang/                   # Language files
-│   ├── views/admin/            # Admin page templates
 │   └── whmcs.json, logo.png    # Metadata shown in Apps & Integrations
 │
 └── servers/cubepath/

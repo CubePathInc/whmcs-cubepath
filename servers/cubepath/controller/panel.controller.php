@@ -57,7 +57,8 @@ if (!class_exists('PanelController'))
          */
         public static function respond(array $params, $actor, $action, $payload)
         {
-            $data = json_decode((string)$payload, true);
+            // WHMCS runs htmlspecialchars() over $_POST, which breaks the JSON quotes.
+            $data = json_decode(htmlspecialchars_decode((string)$payload, ENT_QUOTES), true);
             $controller = new self($params, $actor);
 
             try

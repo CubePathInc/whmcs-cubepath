@@ -154,20 +154,6 @@ if (!class_exists('CubepathHelper'))
         }
 
         /**
-         * Language of the logged-in administrator.
-         *
-         * @return string
-         */
-        public static function adminLanguage()
-        {
-            $language = isset($_SESSION['adminid'])
-                ? Capsule::table('tbladmins')->where('id', (int)$_SESSION['adminid'])->value('language')
-                : null;
-
-            return $language ? (string)$language : 'english';
-        }
-
-        /**
          * Every VPS the token can see (GET /vps/), indexed by id. Cached per
          * client for the request; client() reuses one client per token, so
          * listing many services costs one call per token.

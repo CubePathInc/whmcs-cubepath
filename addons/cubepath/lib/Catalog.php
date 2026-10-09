@@ -58,7 +58,9 @@ class Catalog
 
     /**
      * @return array<string, array> plan_name => plan details, sorted by price;
-     *                              "locations" only lists where it is in stock
+     *                              "locations" only lists where it is in stock,
+     *                              "offered_in" where it exists even if sold out, and
+     *                              "family" is the name of its cluster ("General Purpose")
      */
     public function plans()
     {
@@ -69,6 +71,8 @@ class Catalog
 
             foreach ($this->listOf($location, 'clusters') as $cluster)
             {
+                $family = !empty($cluster['cluster_name']) ? trim((string)$cluster['cluster_name']) : '';
+
                 foreach ($this->listOf($cluster, 'plans') as $plan)
                 {
                     if (empty($plan['plan_name']))
@@ -86,9 +90,20 @@ class Catalog
                             'storage_gb'     => isset($plan['storage']) ? (int)$plan['storage'] : 0,
                             'bandwidth_tb'   => isset($plan['bandwidth']) ? (int)$plan['bandwidth'] : 0,
                             'price_per_hour' => isset($plan['price_per_hour']) ? (float)$plan['price_per_hour'] : 0.0,
+                            'family'         => $family,
                             'locations'      => array(),
+                            'offered_in'     => array(),
                             'available'      => false,
                         );
+                    }
+                    if ($plans[$name]['family'] === '')
+                    {
+                        $plans[$name]['family'] = $family;
+                    }
+
+                    if ($locationName !== '' && !in_array($locationName, $plans[$name]['offered_in'], true))
+                    {
+                        $plans[$name]['offered_in'][] = $locationName;
                     }
 
                     // Out of stock plans are listed but cannot be created there.
@@ -110,6 +125,7 @@ class Catalog
         foreach ($plans as &$plan)
         {
             sort($plan['locations']);
+            sort($plan['offered_in']);
             $plan['price_per_month'] = round($plan['price_per_hour'] * self::HOURS_PER_MONTH, 2);
         }
         unset($plan);
