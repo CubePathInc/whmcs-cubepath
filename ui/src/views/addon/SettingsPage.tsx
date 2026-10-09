@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/toast";
 import { ErrorState, InfoRow } from "@/components/shared";
 import { callApi, useConfig, useQuery } from "@/lib/api";
-import type { AddonSettings } from "@/lib/types";
+import type { AddonSettings, StoreSettings } from "@/lib/types";
 import { useT } from "@/i18n";
 
 export function SettingsPage() {
@@ -26,6 +27,7 @@ export function SettingsPage() {
     <div className="grid items-start gap-4 @lg:grid-cols-2">
       <TokenCard settings={query.data} reload={query.reload} />
       <ProjectCard settings={query.data} reload={query.reload} />
+      <StoreCard />
     </div>
   );
 }
@@ -178,6 +180,89 @@ function ProjectCard({ settings, reload }: { settings: AddonSettings; reload: ()
             </div>
           </>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+type StoreFlag = "cards" | "sshKey" | "cloudInit" | "backups" | "ipv6Only";
+
+function StoreCard() {
+  const t = useT();
+  const config = useConfig();
+  const toast = useToast();
+  const query = useQuery<StoreSettings>("addon.store");
+  const [form, setForm] = useState<Record<string, string | boolean> | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (query.data)
+      setForm({
+        ...query.data.settings,
+        backupPercent: String(query.data.settings.backupPercent),
+        ipv6OnlyDiscount: query.data.settings.ipv6OnlyDiscount.toFixed(2),
+      });
+  }, [query.data]);
+
+  if (query.error && !query.data) return <ErrorState message={query.error} onRetry={query.reload} />;
+  if (!query.data || !form) return <Skeleton className="h-64 rounded-xl" />;
+
+  const { currency, products } = query.data;
+  const set = (key: string, value: string | boolean) => setForm({ ...form, [key]: value });
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await callApi(config, "addon.saveStore", form);
+      toast.success(t("addon.store.saved", { count: products }));
+      await query.reload();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggle = (key: StoreFlag, children?: ReactNode) => (
+    <div className="flex flex-col gap-2 border-t py-3 first:border-t-0 first:pt-0">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-sm font-medium">{t(`addon.store.${key}`)}</span>
+          <span className="text-xs text-muted-foreground">{t(`addon.store.${key}Hint`)}</span>
+        </div>
+        <Switch checked={form[key] === true} onCheckedChange={(v) => set(key, v)} aria-label={t(`addon.store.${key}`)} />
+      </div>
+      {form[key] === true && children}
+    </div>
+  );
+
+  const amount = (key: string, unit: string, label: string) => (
+    <div className="grid max-w-[220px] gap-1.5">
+      <Label htmlFor={`cp-${key}`}>{label}</Label>
+      <div className="relative">
+        <Input id={`cp-${key}`} inputMode="decimal" value={String(form[key])} className="pr-14 tabular-nums" onChange={(e) => set(key, e.target.value)} />
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{unit}</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <Card className="@lg:col-span-2">
+      <CardHeader>
+        <CardTitle>{t("addon.store.title")}</CardTitle>
+        <CardDescription>{t("addon.store.hint")}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col">
+        {toggle("cards")}
+        {toggle("sshKey")}
+        {toggle("cloudInit")}
+        {toggle("backups", amount("backupPercent", "%", t("addon.store.backupPercent")))}
+        {toggle("ipv6Only", amount("ipv6OnlyDiscount", currency.code, t("addon.store.ipv6OnlyDiscount")))}
+        <div className="flex justify-end pt-2">
+          <Button loading={busy} onClick={save}>
+            {t("common.save")}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

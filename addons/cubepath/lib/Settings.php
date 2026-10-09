@@ -13,7 +13,26 @@ class Settings
 
     const DISABLED_LOCATIONS = 'disabledLocations';
     const DISABLED_TEMPLATES = 'disabledTemplates';
+    const STORE = 'store';
     const FAMILY_GROUPS = 'familyGroups';
+
+    /**
+     * What the order form offers besides location and operating system.
+     * backupPercent is a share of the product price; ipv6OnlyDiscount is a
+     * monthly amount in the default currency.
+     */
+    const STORE_DEFAULTS = array(
+        'cards'            => true,
+        'sshKey'           => true,
+        'cloudInit'        => true,
+        'backups'          => true,
+        'backupPercent'    => 20,
+        'ipv6Only'         => true,
+        'ipv6OnlyDiscount' => null,
+    );
+
+    /** CubePath charges this much for a VPS's IPv4 address, in USD. */
+    const IPV4_MONTHLY_USD = 1.5;
 
     /**
      * Settings written by the pre-release module, as PHP-serialized maps.
@@ -115,6 +134,38 @@ class Settings
     }
 
     /**
+     * Order form settings, with defaults for the ones never saved.
+     *
+     * @return array See STORE_DEFAULTS
+     */
+    public static function store()
+    {
+        $saved = json_decode(self::get(self::STORE, '{}'), true);
+        $store = array_merge(self::STORE_DEFAULTS, is_array($saved) ? array_intersect_key($saved, self::STORE_DEFAULTS) : array());
+
+        if ($store['ipv6OnlyDiscount'] === null)
+        {
+            // The IPv4 price is only known in USD.
+            $default = Capsule::table('tblcurrencies')->where('default', 1)->value('code');
+            $store['ipv6OnlyDiscount'] = $default === 'USD' ? self::IPV4_MONTHLY_USD : 0;
+        }
+
+        foreach (array('cards', 'sshKey', 'cloudInit', 'backups', 'ipv6Only') as $flag)
+        {
+            $store[$flag] = (bool)$store[$flag];
+        }
+        $store['backupPercent'] = max(0, (float)$store['backupPercent']);
+        $store['ipv6OnlyDiscount'] = max(0, (float)$store['ipv6OnlyDiscount']);
+
+        return $store;
+    }
+
+    public static function setStore(array $store)
+    {
+        self::set(self::STORE, json_encode(array_intersect_key($store, self::STORE_DEFAULTS)));
+    }
+
+    /**
      * Product group created for each plan family by the product creator, so
      * groups renamed by the admin keep receiving their family's products.
      *
@@ -133,6 +184,34 @@ class Settings
         $groups[$family] = (int)$groupId;
 
         self::set(self::FAMILY_GROUPS, json_encode($groups));
+    }
+
+    /**
+     * Whether each template is an operating system or an application, and its
+     * OS family, for the order form cards. Saved whenever products are synced
+     * so the order form does not query the API.
+     *
+     * @param array $templates Catalog::templates()
+     */
+    public static function setTemplateMeta(array $templates)
+    {
+        $meta = array();
+        foreach ($templates as $name => $template)
+        {
+            $meta[$name] = array('type' => $template['type'], 'os' => $template['os']);
+        }
+
+        self::set('templateMeta', json_encode($meta));
+    }
+
+    /**
+     * @return array<string, array{type: string, os: string}>
+     */
+    public static function templateMeta()
+    {
+        $decoded = json_decode(self::get('templateMeta', '{}'), true);
+
+        return is_array($decoded) ? $decoded : array();
     }
 
     /**

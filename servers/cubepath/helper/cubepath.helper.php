@@ -83,21 +83,23 @@ if (!class_exists('CubepathHelper'))
         }
 
         /**
-         * Markup that mounts the panel (ui/, built into assets/dist/app.js).
-         * The config is read by the script; see ui/src/lib/types.ts PanelConfig.
+         * Markup that mounts the panel (ui/, built into assets/dist/app.js), or
+         * the order form cards (assets/dist/store.js). The config is read by
+         * the script; see ui/src/lib/types.ts PanelConfig and StoreConfig.
          *
-         * @param array $config
+         * @param array  $config
+         * @param string $bundle
          * @return string
          */
-        public static function panelHtml(array $config)
+        public static function panelHtml(array $config, $bundle = 'app.js')
         {
-            $script = CUBEPATHDIR . 'assets' . DS . 'dist' . DS . 'app.js';
+            $script = CUBEPATHDIR . 'assets' . DS . 'dist' . DS . $bundle;
             if (!file_exists($script))
             {
                 return '<div class="alert alert-warning">CubePath panel assets are missing. Upload the complete module from the release archive.</div>';
             }
 
-            $src = self::systemUrl() . 'modules/servers/cubepath/assets/dist/app.js?v=' . filemtime($script);
+            $src = self::systemUrl() . 'modules/servers/cubepath/assets/dist/' . $bundle . '?v=' . filemtime($script);
 
             // Base64 keeps the config intact: the client area decodes HTML entities in module output.
             return '<div data-cubepath-panel="' . base64_encode(json_encode($config)) . '"></div>'
@@ -411,6 +413,87 @@ if (!class_exists('CubepathHelper'))
             }
 
             return null;
+        }
+
+        /**
+         * Quantity of a service's configurable option: 1 or 0 for a yes/no
+         * option such as backups.
+         *
+         * @param int    $serviceId
+         * @param string $optionName Option name prefix (before the pipe)
+         * @return int|null Null if the service has no such option
+         */
+        public static function getConfigurableOptionQty($serviceId, $optionName)
+        {
+            $qty = Capsule::table('tblhostingconfigoptions as hco')
+                ->join('tblproductconfigoptions as pco', 'hco.configid', '=', 'pco.id')
+                ->where('hco.relid', $serviceId)
+                ->where('pco.optionname', 'LIKE', $optionName . '|%')
+                ->value('hco.qty');
+
+            return $qty === null ? null : (int)$qty;
+        }
+
+        /**
+         * Whether a service may use automatic backups. Products that do not
+         * sell backups (no visible backups option) leave them free as before.
+         *
+         * @param int $serviceId
+         * @return bool|null Null when backups are not sold for the product
+         */
+        public static function backupsPurchased($serviceId)
+        {
+            $sold = Capsule::table('tblhosting as h')
+                ->join('tblproductconfiglinks as l', 'l.pid', '=', 'h.packageid')
+                ->join('tblproductconfigoptions as o', 'o.gid', '=', 'l.gid')
+                ->where('h.id', $serviceId)
+                ->where('o.optionname', 'LIKE', 'backups|%')
+                ->where('o.hidden', 0)
+                ->exists();
+
+            if (!$sold)
+            {
+                return null;
+            }
+
+            return (int)self::getConfigurableOptionQty($serviceId, 'backups') > 0;
+        }
+
+        /**
+         * Delete an SSH key the module added for a service. Fails while a
+         * VPS still uses it.
+         *
+         * @param \Cubepath\CubepathClient $client
+         * @param int                       $keyId
+         * @return bool Whether it is gone
+         */
+        public static function deleteSshKey($client, $keyId)
+        {
+            try
+            {
+                $client->sshKeys()->delete((int)$keyId);
+
+                return true;
+            }
+            catch (\Cubepath\APIError $e)
+            {
+                return $e->getStatusCode() === 404;
+            }
+            catch (\Exception $e)
+            {
+                return false;
+            }
+        }
+
+        /**
+         * Whether a string is one OpenSSH public key the API accepts.
+         *
+         * @param string $key
+         * @return bool
+         */
+        public static function validSshKey($key)
+        {
+            return (bool)preg_match('/^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp256) AAAA[0-9A-Za-z+\/]+={0,3}([ \t][^\x00-\x1f]*)?$/D', trim((string)$key));
         }
 
         /**

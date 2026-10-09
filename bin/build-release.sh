@@ -22,8 +22,8 @@ mkdir -p "$build/modules/addons" "$build/modules/servers"
 if command -v npm > /dev/null; then
     (cd "$root/ui" && npm ci --no-audit --no-fund && npm run build) >&2
 fi
-if [ ! -f "$root/servers/cubepath/assets/dist/app.js" ]; then
-    echo "servers/cubepath/assets/dist/app.js is missing: run 'npm ci && npm run build' in ui/ first" >&2
+if [ ! -f "$root/servers/cubepath/assets/dist/app.js" ] || [ ! -f "$root/servers/cubepath/assets/dist/store.js" ]; then
+    echo "servers/cubepath/assets/dist/app.js or store.js is missing: run 'npm ci && npm run build' in ui/ first" >&2
     exit 1
 fi
 

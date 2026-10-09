@@ -89,3 +89,118 @@ add_hook('ProductEdit', 1, function ($vars) {
         logActivity(sprintf('CubePath: could not create the options of product #%d: %s', $productId, $e->getMessage()));
     }
 });
+
+/**
+ * Order form: replace the location, operating system, network, backups,
+ * SSH key and cloud-init fields of CubePath products with the configurator
+ * cards (ui/src/views/store). The native fields stay in the form, hidden,
+ * so they are used as is if the script does not run.
+ */
+add_hook('ClientAreaFooterOutput', 1, function ($vars) {
+
+    if (!isset($vars['filename'], $vars['templatefile'])
+        || $vars['filename'] !== 'cart'
+        || $vars['templatefile'] !== 'configureproduct'
+        || empty($vars['productinfo']['pid']))
+    {
+        return '';
+    }
+
+    try
+    {
+        $currencyId = isset($vars['currency']['id']) ? (int)$vars['currency']['id'] : 0;
+        $config = \CubePath\WHMCS\Addon\Store::config((int)$vars['productinfo']['pid'], $currencyId);
+        if (!$config)
+        {
+            return '';
+        }
+
+        $config['endpoint'] = '';
+        $config['token'] = '';
+        $config['lang'] = isset($vars['language']) ? (string)$vars['language'] : '';
+
+        return CubepathHelper::panelHtml($config, 'store.js');
+    }
+    catch (\Exception $e)
+    {
+        logActivity('CubePath: could not load the order form cards: ' . $e->getMessage());
+
+        return '';
+    }
+});
+
+/**
+ * Check the SSH key and cloud-init of a CubePath product before it goes in the cart.
+ */
+add_hook('ShoppingCartValidateProductUpdate', 1, function ($vars) {
+
+    $index = isset($_POST['i']) ? (int)$_POST['i'] : -1;
+    if (!isset($_SESSION['cart']['products'][$index]['pid']))
+    {
+        return array();
+    }
+
+    return \CubePath\WHMCS\Addon\Store::validate((int)$_SESSION['cart']['products'][$index]['pid'], $_POST);
+});
+
+/**
+ * SSH keys added for terminated services cannot be deleted until CubePath
+ * has destroyed the VPS that uses them; retry them once a day.
+ */
+add_hook('DailyCronJob', 1, function ($vars) {
+
+    $rows = Capsule::table('tblcustomfieldsvalues as v')
+        ->join('tblcustomfields as f', 'f.id', '=', 'v.fieldid')
+        ->join('tblhosting as h', 'h.id', '=', 'v.relid')
+        ->join('tblproducts as p', 'p.id', '=', 'h.packageid')
+        ->where('f.type', 'product')
+        ->where('f.fieldname', 'like', 'ssh_key_id|%')
+        ->where('v.value', '!=', '')
+        ->where('p.servertype', 'cubepath')
+        ->whereIn('h.domainstatus', array('Terminated', 'Cancelled', 'Fraud'))
+        ->get(array('v.fieldid', 'v.relid', 'v.value', 'h.packageid'));
+
+    foreach ($rows as $row)
+    {
+        try
+        {
+            $token = \CubePath\WHMCS\Addon\Servers::productToken((int)$row->packageid);
+            if ($token !== '' && CubepathHelper::deleteSshKey(new \Cubepath\CubepathClient($token), (int)$row->value))
+            {
+                Capsule::table('tblcustomfieldsvalues')
+                    ->where('fieldid', $row->fieldid)
+                    ->where('relid', $row->relid)
+                    ->update(array('value' => ''));
+            }
+        }
+        catch (\Exception $e)
+        {
+            logActivity('CubePath: could not delete the SSH key of service #' . (int)$row->relid . ': ' . $e->getMessage());
+        }
+    }
+});
+
+/**
+ * Service page of a CubePath product: hide the configurable options and
+ * additional information tabs, the panel in the server information tab
+ * already shows the location, operating system and IPs.
+ */
+add_hook('ClientAreaPageProductDetails', 1, function ($vars) {
+
+    $serviceId = isset($vars['id']) ? (int)$vars['id'] : 0;
+    $isCubepath = $serviceId > 0 && Capsule::table('tblhosting as h')
+        ->join('tblproducts as p', 'p.id', '=', 'h.packageid')
+        ->where('h.id', $serviceId)
+        ->where('p.servertype', 'cubepath')
+        ->exists();
+
+    if (!$isCubepath)
+    {
+        return array();
+    }
+
+    return array(
+        'configurableoptions' => array(),
+        'customfields'        => array(),
+    );
+});

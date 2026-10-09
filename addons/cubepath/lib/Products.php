@@ -12,9 +12,11 @@ use WHMCS\Database\Capsule;
  *  - its server group's CubePath server, or an API token in configoption1
  *  - configoption2: plan name
  *  - configoption3: project ID
- *  - configurable options "location|..." and "template|...", whose
- *    sub-options are named "<api value>|<label>"
- *  - admin-only custom fields vps_id, ip_address and project_id
+ *  - configurable options "location|...", "template|..." and "network|...",
+ *    whose sub-options are named "<api value>|<label>", and the yes/no
+ *    option "backups|..."
+ *  - custom fields ssh_key and cloud_init, filled in by the client when
+ *    ordering, and the admin-only vps_id, ip_address, project_id and ssh_key_id
  */
 class Products
 {
@@ -22,13 +24,38 @@ class Products
 
     const OPTION_LOCATION = 'location';
     const OPTION_TEMPLATE = 'template';
+    const OPTION_NETWORK = 'network';
+    const OPTION_BACKUPS = 'backups';
+
+    const NETWORK_DUAL = 'dual';
+    const NETWORK_IPV6_ONLY = 'ipv6';
+
+    /** WHMCS configurable option types. */
+    const TYPE_DROPDOWN = 1;
+    const TYPE_YESNO = 3;
+
     const CUSTOM_FIELDS = array(
         'vps_id|VPS ID',
         'ip_address|IP Address',
         'project_id|Project ID',
+        'ssh_key_id|SSH Key ID',
+    );
+
+    /** Custom fields the client fills in on the order form, keyed by the store setting that shows them. */
+    const ORDER_FIELDS = array(
+        'sshKey' => array(
+            'fieldname'   => 'ssh_key|SSH public key',
+            'description' => 'Optional. Paste an OpenSSH public key (ssh-ed25519 AAAA...) to log in without a password. Not used on Windows.',
+        ),
+        'cloudInit' => array(
+            'fieldname'   => 'cloud_init|Cloud-init user data',
+            'description' => 'Optional. A #cloud-config YAML script run on the first boot. Not used on Windows.',
+        ),
     );
 
     const BILLING_CYCLES = array('monthly', 'quarterly', 'semiannually', 'annually', 'biennially', 'triennially');
+
+    const CYCLE_MONTHS = array('monthly' => 1, 'quarterly' => 3, 'semiannually' => 6, 'annually' => 12, 'biennially' => 24, 'triennially' => 36);
 
     /**
      * @return \Illuminate\Support\Collection
@@ -271,22 +298,64 @@ class Products
     {
         foreach (self::CUSTOM_FIELDS as $fieldName)
         {
-            $exists = Capsule::table('tblcustomfields')
-                ->where('type', 'product')
-                ->where('relid', $productId)
-                ->where('fieldname', $fieldName)
-                ->exists();
+            self::ensureCustomField($productId, $fieldName, array(
+                'fieldtype' => 'text',
+                'adminonly' => 'on',
+            ));
+        }
 
-            if (!$exists)
+        $store = Settings::store();
+        foreach (self::ORDER_FIELDS as $setting => $field)
+        {
+            self::ensureCustomField($productId, $field['fieldname'], array(
+                'fieldtype'   => 'textarea',
+                'description' => $field['description'],
+                'adminonly'   => '',
+                'required'    => '',
+                'showinvoice' => '',
+            ), array('showorder' => $store[$setting] ? 'on' : ''));
+        }
+    }
+
+    /**
+     * @param array $create Columns set when the field is created
+     * @param array $always Columns also set when it already exists
+     */
+    private static function ensureCustomField($productId, $fieldName, array $create, array $always = array())
+    {
+        $id = Capsule::table('tblcustomfields')
+            ->where('type', 'product')
+            ->where('relid', $productId)
+            ->where('fieldname', $fieldName)
+            ->value('id');
+
+        if ($id)
+        {
+            if ($always)
             {
-                Capsule::table('tblcustomfields')->insert(array(
-                    'type'      => 'product',
-                    'relid'     => $productId,
-                    'fieldname' => $fieldName,
-                    'fieldtype' => 'text',
-                    'adminonly' => 'on',
-                ));
+                Capsule::table('tblcustomfields')->where('id', $id)->update($always);
             }
+
+            return;
+        }
+
+        Capsule::table('tblcustomfields')->insert(array_merge(array(
+            'type'      => 'product',
+            'relid'     => $productId,
+            'fieldname' => $fieldName,
+        ), $create, $always));
+    }
+
+    /**
+     * Apply the order form settings to every CubePath product: order fields
+     * shown or hidden, and the backups and network options with their prices.
+     */
+    public static function applyStore()
+    {
+        foreach (self::ids() as $productId)
+        {
+            self::ensureCustomFields($productId);
+            self::syncExtraOptions($productId);
         }
     }
 
@@ -314,8 +383,9 @@ class Products
 
     /**
      * Make sure the product has location and template configurable options
-     * with one sub-option per value the plan can use. Existing sub-options
-     * are kept, so prices set by the admin are preserved.
+     * with one sub-option per value the plan can use, plus the network and
+     * backups options. Existing location and template sub-options are kept,
+     * so prices set by the admin are preserved.
      */
     public static function syncConfigurableOptions($productId, Catalog $catalog)
     {
@@ -331,15 +401,99 @@ class Products
         $templates = array_map(function ($template) {
             return $template['label'];
         }, $catalog->templatesForPlan($plan));
+        Settings::setTemplateMeta($catalog->templates());
         Settings::setStock($catalog);
 
         Capsule::connection()->transaction(function () use ($productId, $locations, $templates) {
             $groupId = self::configGroupId($productId);
-            self::syncOption($groupId, self::OPTION_LOCATION, 'Location', $locations);
-            self::syncOption($groupId, self::OPTION_TEMPLATE, 'Operating System', $templates);
+            self::syncOption($groupId, self::OPTION_LOCATION, 'Location', $locations, 1);
+            self::syncOption($groupId, self::OPTION_TEMPLATE, 'Operating System', $templates, 2);
         });
 
+        self::syncExtraOptions($productId);
         self::applyVisibility();
+    }
+
+    /**
+     * Network and backups options, hidden when the order form does not offer
+     * them. Their prices follow the store settings and the product's price,
+     * so they are recalculated every time: IPv6 only is a monthly discount,
+     * backups a share of the product price for each billing cycle.
+     */
+    public static function syncExtraOptions($productId)
+    {
+        $store = Settings::store();
+        $product = Capsule::table('tblproducts')->where('id', $productId)->first(array('paytype'));
+        $recurring = $product && $product->paytype === 'recurring';
+
+        Capsule::connection()->transaction(function () use ($productId, $store, $recurring) {
+            $groupId = self::configGroupId($productId);
+
+            $networkId = self::syncOption($groupId, self::OPTION_NETWORK, 'Network', array(
+                self::NETWORK_DUAL      => 'IPv4 + IPv6',
+                self::NETWORK_IPV6_ONLY => 'IPv6 only',
+            ), 3);
+            Capsule::table('tblproductconfigoptions')->where('id', $networkId)->update(array('hidden' => $store['ipv6Only'] ? 0 : 1));
+
+            $ipv6OnlyId = self::subOptionId($networkId, self::NETWORK_IPV6_ONLY);
+            self::setPricing($ipv6OnlyId, function ($currency, $cycle) use ($store, $recurring) {
+                return $recurring ? -round($store['ipv6OnlyDiscount'] * $currency->rate * self::CYCLE_MONTHS[$cycle], 2) : 0;
+            });
+
+            $backupsId = self::syncOption($groupId, self::OPTION_BACKUPS, 'Automatic backups', array('1' => 'Daily backups'), 4, self::TYPE_YESNO);
+            Capsule::table('tblproductconfigoptions')->where('id', $backupsId)->update(array('hidden' => $store['backups'] ? 0 : 1));
+
+            $productPrices = array();
+            foreach (Capsule::table('tblpricing')->where('type', 'product')->where('relid', $productId)->get() as $row)
+            {
+                $productPrices[(int)$row->currency] = $row;
+            }
+            self::setPricing(self::subOptionId($backupsId, '1'), function ($currency, $cycle) use ($store, $productPrices) {
+                $price = isset($productPrices[$currency->id]) ? (float)$productPrices[$currency->id]->{$cycle} : 0;
+
+                return $price > 0 ? round($price * $store['backupPercent'] / 100, 2) : 0;
+            });
+        });
+    }
+
+    private static function subOptionId($optionId, $value)
+    {
+        foreach (Capsule::table('tblproductconfigoptionssub')->where('configid', $optionId)->get(array('id', 'optionname')) as $sub)
+        {
+            if (self::optionValue($sub->optionname) === (string)$value)
+            {
+                return (int)$sub->id;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Replace a sub-option's recurring prices in every currency.
+     *
+     * @param callable $price function (object $currency, string $cycle): float
+     */
+    private static function setPricing($subOptionId, callable $price)
+    {
+        if (!$subOptionId)
+        {
+            return;
+        }
+
+        foreach (Capsule::table('tblcurrencies')->get(array('id', 'rate')) as $currency)
+        {
+            $row = array();
+            foreach (self::BILLING_CYCLES as $cycle)
+            {
+                $row[$cycle] = $price($currency, $cycle);
+            }
+
+            Capsule::table('tblpricing')->updateOrInsert(
+                array('type' => 'configoptions', 'currency' => $currency->id, 'relid' => $subOptionId),
+                $row
+            );
+        }
     }
 
     /**
@@ -440,7 +594,7 @@ class Products
         $productName = Capsule::table('tblproducts')->where('id', $productId)->value('name');
         $groupId = Capsule::table('tblproductconfiggroups')->insertGetId(array(
             'name'        => sprintf('CubePath #%d %s', $productId, $productName),
-            'description' => 'Location and operating system for the CubePath plan. Managed by the CubePath addon.',
+            'description' => 'Location, operating system, network and backups for the CubePath plan. Managed by the CubePath addon.',
         ));
         Capsule::table('tblproductconfiglinks')->insert(array('gid' => $groupId, 'pid' => $productId));
 
@@ -449,8 +603,9 @@ class Products
 
     /**
      * @param array<string, string> $values API value => label
+     * @return int Configurable option ID
      */
-    private static function syncOption($groupId, $key, $label, array $values)
+    private static function syncOption($groupId, $key, $label, array $values, $order, $type = self::TYPE_DROPDOWN)
     {
         $optionId = Capsule::table('tblproductconfigoptions')
             ->where('gid', $groupId)
@@ -462,8 +617,8 @@ class Products
             $optionId = Capsule::table('tblproductconfigoptions')->insertGetId(array(
                 'gid'        => $groupId,
                 'optionname' => $key . '|' . $label,
-                'optiontype' => 1,
-                'order'      => $key === self::OPTION_LOCATION ? 1 : 2,
+                'optiontype' => $type,
+                'order'      => $order,
             ));
         }
 
@@ -491,6 +646,8 @@ class Products
             ));
             self::insertFreePricing($subOptionId);
         }
+
+        return (int)$optionId;
     }
 
     private static function insertFreePricing($subOptionId)
