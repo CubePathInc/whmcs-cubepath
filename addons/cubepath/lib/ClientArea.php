@@ -201,7 +201,7 @@ class ClientArea
         $rows = $query
             ->orderByRaw("FIELD(h.domainstatus, 'Active', 'Suspended', 'Pending') = 0")
             ->orderBy('h.id', 'desc')
-            ->get(array('h.id', 'h.domain', 'h.dedicatedip', 'h.domainstatus', 'h.nextduedate', 'h.amount', 'h.billingcycle', 'p.name'));
+            ->get(array('h.id', 'h.domain', 'h.dedicatedip', 'h.assignedips', 'h.domainstatus', 'h.nextduedate', 'h.amount', 'h.billingcycle', 'p.name'));
 
         $currencyId = (int)Capsule::table('tblclients')->where('id', $clientId)->value('currency');
         $locations = self::serviceLocations($rows->pluck('id')->all());
@@ -210,11 +210,17 @@ class ClientArea
         foreach ($rows as $row)
         {
             $location = isset($locations[$row->id]) ? $locations[$row->id] : '';
+            // IPv6 only VPS have no dedicated IP; the module stores their IPv6 in assignedips.
+            $ip = trim((string)$row->dedicatedip);
+            if ($ip === '')
+            {
+                $ip = trim(strtok((string)$row->assignedips, "\r\n") ?: '');
+            }
             $services[] = array(
                 'id'       => (int)$row->id,
                 'product'  => (string)$row->name,
                 'hostname' => (string)$row->domain,
-                'ip'       => (string)$row->dedicatedip,
+                'ip'       => $ip,
                 'status'   => strtolower((string)$row->domainstatus),
                 'location' => $location,
                 'flag'     => self::flag($location),
@@ -389,6 +395,23 @@ class ClientArea
 
         // cart.php on its own lists the first group of the store, which may not sell VPS.
         return $store;
+    }
+
+    /**
+     * Where to send a request for a domain page served outside cart.php
+     * (renewals, pricing), or null to let it through.
+     *
+     * @param string $route The rp parameter, or the path with friendly URLs
+     */
+    public static function routeRedirect($route)
+    {
+        if (!preg_match('#/(cart/domain|domain/pricing)(/|$)#', '/' . ltrim($route, '/')))
+        {
+            return null;
+        }
+        $visible = self::groups(self::currencyId());
+
+        return $visible ? $visible[0]['url'] : null;
     }
 
     /**
