@@ -30,6 +30,7 @@ export function BackupsTab() {
   const [busy, setBusy] = useState(false);
   const [restore, setRestore] = useState<Backup | null>(null);
   const [remove, setRemove] = useState<Backup | null>(null);
+  const [ordering, setOrdering] = useState(false);
 
   const running = backups.data?.backups.some((b) => RUNNING.includes(b.status)) ?? false;
   usePolling(backups.reload, running ? 5000 : 60000);
@@ -90,11 +91,9 @@ export function BackupsTab() {
           {backups.data.locked && !settings.enabled && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted px-4 py-3 text-sm">
               <span>{t("backups.notIncluded")}</span>
-              {backups.data.upgradeUrl && (
-                <Button size="sm" variant="outline" onClick={() => window.open(backups.data!.upgradeUrl!, "_top")}>
-                  {t("backups.order")}
-                </Button>
-              )}
+              <Button size="sm" variant="outline" onClick={() => setOrdering(true)}>
+                {t("backups.order")}
+              </Button>
             </div>
           )}
           <div className="grid gap-4 @sm:grid-cols-3">
@@ -254,6 +253,29 @@ export function BackupsTab() {
           confirmLabel={t("backups.restore")}
           onConfirm={async () => {
             if (await run("backups.restore", { id: restore.id }, t("backups.restoring"))) setRestore(null);
+          }}
+        />
+      )}
+      {ordering && (
+        <ConfirmDialog
+          open
+          onClose={() => setOrdering(false)}
+          title={t("backups.orderTitle")}
+          description={t("backups.orderDescription")}
+          confirmLabel={t("backups.orderContinue")}
+          onConfirm={async () => {
+            try {
+              const res = await callApi<{ invoiceUrl: string | null }>(config, "backups.order", {});
+              if (res.invoiceUrl) {
+                window.open(res.invoiceUrl, "_top");
+                return;
+              }
+              toast.success(t("backups.ordered"));
+              setOrdering(false);
+              await backups.reload();
+            } catch (e) {
+              toast.error((e as Error).message);
+            }
           }}
         />
       )}
