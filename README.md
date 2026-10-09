@@ -4,6 +4,18 @@ WHMCS provisioning and addon module for [CubePath](https://cubepath.com). It aut
 
 [![CI](https://github.com/CubePathInc/whmcs-cubepath/actions/workflows/ci.yml/badge.svg)](https://github.com/CubePathInc/whmcs-cubepath/actions/workflows/ci.yml)
 
+![VPS panel in the client area](docs/screenshots/vps-panel.webp)
+
+## Screenshots
+
+| Store | Ordering a VPS |
+|---|---|
+| ![Store with the plans of a family](docs/screenshots/store.webp) | ![Location, image, network, backups and access options](docs/screenshots/order-configure.webp) |
+| **Client overview** | **Support ticket** |
+| ![Client area overview](docs/screenshots/client-overview.webp) | ![Ticket conversation with a staff reply](docs/screenshots/support-ticket.webp) |
+| **Product Creator (admin)** | |
+| ![Product Creator in the addon](docs/screenshots/admin-product-creator.webp) | |
+
 ## Requirements
 
 - WHMCS 8.x or 9.x
