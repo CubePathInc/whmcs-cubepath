@@ -1,6 +1,7 @@
 <?php
 
 $_ADDONLANG['page_dashboard'] = 'Dashboard';
+$_ADDONLANG['page_servers'] = 'Servers';
 $_ADDONLANG['page_creator'] = 'Product Creator';
 $_ADDONLANG['page_products'] = 'Products';
 $_ADDONLANG['page_locations'] = 'Locations';

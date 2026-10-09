@@ -86,6 +86,11 @@ function cubepath_deactivate()
 
 function cubepath_output($vars)
 {
+    if (isset($_GET['cpapi']))
+    {
+        \CubePath\WHMCS\Addon\Admin\PanelApi::handle($_POST);
+    }
+
     $controller = new Controller($vars['modulelink'], isset($vars['_lang']) ? $vars['_lang'] : array());
 
     echo $controller->dispatch($_GET, $_POST);

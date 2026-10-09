@@ -30,6 +30,13 @@ jobs:
             exit 1
           fi
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
       - name: Build archive
         id: build
         run: echo "archive=$(bin/build-release.sh "$GITHUB_REF_NAME")" >> "$GITHUB_OUTPUT"

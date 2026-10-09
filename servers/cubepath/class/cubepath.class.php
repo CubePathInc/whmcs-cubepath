@@ -148,7 +148,7 @@ class Cubepath
 
             if (empty($vpsId))
             {
-                return LangHelper::T('core.action.not_found_vps_id');
+                return 'The VPS ID of this service is not set';
             }
 
             CubepathHelper::power($client, $vpsId, 'stop');
@@ -178,7 +178,7 @@ class Cubepath
 
             if (empty($vpsId))
             {
-                return LangHelper::T('core.action.not_found_vps_id');
+                return 'The VPS ID of this service is not set';
             }
 
             CubepathHelper::power($client, $vpsId, 'start');
@@ -208,7 +208,7 @@ class Cubepath
 
             if (empty($vpsId))
             {
-                return LangHelper::T('core.action.not_found_vps_id');
+                return 'The VPS ID of this service is not set';
             }
 
             $client->vps()->destroy((int)$vpsId);
@@ -238,7 +238,7 @@ class Cubepath
 
             if (empty($vpsId))
             {
-                return LangHelper::T('core.action.not_found_vps_id');
+                return 'The VPS ID of this service is not set';
             }
 
             $newPlan = $this->params['configoption2'];
@@ -305,7 +305,7 @@ class Cubepath
 
             if (empty($vpsId))
             {
-                return LangHelper::T('core.action.not_found_vps_id');
+                return 'The VPS ID of this service is not set';
             }
 
             CubepathHelper::power($client, $vpsId, $action);

@@ -121,82 +121,135 @@ function cubepath_TestConnection($params)
 }
 
 /**
- * Provision a new CubePath VPS instance.
- *
- * @param array $params WHMCS module parameters
- * @return string 'success' or error message
+ * Provision a new VPS.
  */
 function cubepath_CreateAccount($params)
 {
     $cubepath = new Cubepath($params);
-    return $cubepath->createAccount();
+    return cubepath_logResult($params, 'create', $cubepath->createAccount());
 }
 
 /**
- * Suspend a CubePath VPS (powers off the server).
- *
- * @param array $params WHMCS module parameters
- * @return string 'success' or error message
+ * Suspend the VPS (powers it off).
  */
 function cubepath_SuspendAccount($params)
 {
     $cubepath = new Cubepath($params);
-    return $cubepath->suspendAccount();
+    return cubepath_logResult($params, 'suspend', $cubepath->suspendAccount());
 }
 
 /**
- * Unsuspend a CubePath VPS (powers on the server).
- *
- * @param array $params WHMCS module parameters
- * @return string 'success' or error message
+ * Unsuspend the VPS (powers it on).
  */
 function cubepath_UnsuspendAccount($params)
 {
     $cubepath = new Cubepath($params);
-    return $cubepath->unsuspendAccount();
+    return cubepath_logResult($params, 'unsuspend', $cubepath->unsuspendAccount());
 }
 
 /**
- * Terminate (destroy) a CubePath VPS.
- *
- * @param array $params WHMCS module parameters
- * @return string 'success' or error message
+ * Destroy the VPS and the firewall group the panel created for it.
  */
 function cubepath_TerminateAccount($params)
 {
     $cubepath = new Cubepath($params);
-    return $cubepath->terminateAccount();
+    $result = $cubepath->terminateAccount();
+    if ($result === 'success')
+    {
+        try
+        {
+            PanelController::deleteFirewallGroup(CubepathHelper::client($params), (int)$params['serviceid']);
+        }
+        catch (\Exception $e)
+        {
+            logActivity('CubePath: could not clean up the firewall of service #' . (int)$params['serviceid'] . ': ' . $e->getMessage());
+        }
+    }
+
+    return cubepath_logResult($params, 'terminate', $result);
 }
 
 /**
- * Handle plan upgrade/downgrade for a CubePath VPS.
- *
- * @param array $params WHMCS module parameters
- * @return string 'success' or error message
+ * Resize the VPS to the product's plan.
  */
 function cubepath_ChangePackage($params)
 {
     $cubepath = new Cubepath($params);
-    return $cubepath->changePackage();
+    return cubepath_logResult($params, 'change_package', $cubepath->changePackage(), isset($params['configoption2']) ? $params['configoption2'] : null);
 }
 
 /**
- * Render the client area for the CubePath module.
+ * Record a lifecycle action in the service's activity log.
  *
- * @param array $params WHMCS module parameters
- * @return array Template file and variables for WHMCS rendering
+ * @param array       $params
+ * @param string      $action
+ * @param string      $result  'success' or an error message
+ * @param string|null $details
+ * @return string $result
+ */
+function cubepath_logResult($params, $action, $result, $details = null)
+{
+    $actor = isset($_SESSION['adminid']) && defined('ADMINAREA') ? 'admin' : 'system';
+    ActivityHelper::log((int)$params['serviceid'], $actor, $action, $result === 'success', $result === 'success' ? $details : $result);
+
+    return $result;
+}
+
+/**
+ * Client area: the panel (ui/), and its JSON actions when the panel posts
+ * back to this same page.
  */
 function cubepath_ClientArea($params)
 {
-    $render = new CubepathRender($params);
-    return $render->render('ClientArea');
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cpaction']))
+    {
+        if (!CubepathHelper::validToken(isset($_POST['token']) ? $_POST['token'] : ''))
+        {
+            PanelController::sendJson(array('ok' => false, 'error' => 'Your session expired. Reload the page and try again.'));
+        }
+        PanelController::respond($params, PanelController::ACTOR_CLIENT, $_POST['cpaction'], isset($_POST['cpdata']) ? $_POST['cpdata'] : '{}');
+    }
+
+    if (in_array($params['status'], array('Terminated', 'Cancelled', 'Fraud'), true))
+    {
+        return '';
+    }
+
+    return array(
+        'templatefile' => 'template/panel',
+        'vars'         => array(
+            'cubepathPanel' => CubepathHelper::panelHtml(array(
+                'mode'      => 'client',
+                'endpoint'  => CubepathHelper::systemUrl() . 'clientarea.php?action=productdetails&id=' . (int)$params['serviceid'],
+                'token'     => generate_token('plain'),
+                'lang'      => CubepathHelper::clientLanguage($params),
+                'serviceId' => (int)$params['serviceid'],
+            )),
+        ),
+    );
 }
 
 /**
- * Define admin custom action buttons.
+ * Admin service page: the same panel, served through the CubePath addon.
+ */
+function cubepath_AdminServicesTabFields($params)
+{
+    return array(
+        'CubePath' => CubepathHelper::panelHtml(array(
+            'mode'      => 'admin',
+            'endpoint'  => 'addonmodules.php?module=cubepath&cpapi=1',
+            'token'     => generate_token('plain'),
+            'lang'      => CubepathHelper::adminLanguage(),
+            'serviceId' => (int)$params['serviceid'],
+        )),
+    );
+}
+
+/**
+ * Power buttons on the admin service page.
  *
  * @param array $params WHMCS module parameters
- * @return array Button labels mapped to function suffixes
+ * @return array
  */
 function cubepath_AdminCustomButtonArray($params)
 {
@@ -216,7 +269,7 @@ function cubepath_AdminCustomButtonArray($params)
 function cubepath_start($params)
 {
     $cubepath = new Cubepath($params);
-    return $cubepath->start();
+    return cubepath_logResult($params, 'power_start', $cubepath->start());
 }
 
 /**
@@ -228,7 +281,7 @@ function cubepath_start($params)
 function cubepath_reboot($params)
 {
     $cubepath = new Cubepath($params);
-    return $cubepath->reboot();
+    return cubepath_logResult($params, 'power_reboot', $cubepath->reboot());
 }
 
 /**
@@ -240,5 +293,5 @@ function cubepath_reboot($params)
 function cubepath_stop($params)
 {
     $cubepath = new Cubepath($params);
-    return $cubepath->stop();
+    return cubepath_logResult($params, 'power_stop', $cubepath->stop());
 }

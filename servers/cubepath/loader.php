@@ -17,11 +17,9 @@ if (!function_exists('cubepathClassLoader'))
      *
      * Class name mapping examples:
      *   Cubepath        -> class/cubepath.class.php
-     *   CubepathRender  -> class/cubepathrender.class.php
-     *   MainController  -> controller/main.controller.php
+     *   PanelController -> controller/panel.controller.php
      *   CubepathHelper  -> helper/cubepath.helper.php
-     *   LangHelper      -> helper/lang.helper.php
-     *   SessionHelper   -> helper/session.helper.php
+     *   ActivityHelper  -> helper/activity.helper.php
      *
      * @param string $classname The class name to load
      * @return bool True if the class file was found and loaded
@@ -35,14 +33,14 @@ if (!function_exists('cubepathClassLoader'))
             return false;
         }
 
-        // Split CamelCase into dot-separated segments (e.g. MainController -> main.controller)
+        // Split CamelCase into dot-separated segments (e.g. PanelController -> panel.controller)
         $class = explode('.', strtolower(strval(strtolower(preg_replace('/([a-z])([A-Z])/', '$1.$2', $classname)))));
         $file = __DIR__;
 
         if (isset($class[1]))
         {
             // Two-part name: second segment is the subdirectory, first is the filename
-            // e.g. MainController -> controller/main
+            // e.g. PanelController -> controller/panel
             $file .= DS . $class[1] . DS . $class[0];
         }
         else

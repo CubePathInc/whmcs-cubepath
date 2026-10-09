@@ -5,6 +5,7 @@
 # Usage: bin/build-release.sh <version>
 # Output: dist/whmcs-cubepath-<version>.zip containing
 #         modules/addons/cubepath/ (with vendor/) and modules/servers/cubepath/
+#         (with the panel built from ui/)
 #
 set -euo pipefail
 
@@ -15,6 +16,16 @@ archive="$root/dist/whmcs-cubepath-$version.zip"
 
 rm -rf "$build" "$archive"
 mkdir -p "$build/modules/addons" "$build/modules/servers"
+
+# The client area and admin panels are built from ui/ into servers/cubepath/assets/dist.
+# Without npm (e.g. inside the composer image), a build made beforehand is used.
+if command -v npm > /dev/null; then
+    (cd "$root/ui" && npm ci --no-audit --no-fund && npm run build) >&2
+fi
+if [ ! -f "$root/servers/cubepath/assets/dist/app.js" ]; then
+    echo "servers/cubepath/assets/dist/app.js is missing: run 'npm ci && npm run build' in ui/ first" >&2
+    exit 1
+fi
 
 cp -R "$root/addons/cubepath" "$build/modules/addons/cubepath"
 cp -R "$root/servers/cubepath" "$build/modules/servers/cubepath"

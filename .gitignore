@@ -4,6 +4,8 @@
 
 # Build output
 /dist/
+/servers/cubepath/assets/dist/
+/ui/node_modules/
 
 # OS / editor
 .DS_Store
