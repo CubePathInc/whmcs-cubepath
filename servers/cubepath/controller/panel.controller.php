@@ -873,12 +873,37 @@ if (!class_exists('PanelController'))
                 throw new PanelException('Automatic backups are not sold for this product.');
             }
 
-            $result = localAPI('UpgradeProduct', array(
-                'serviceid'     => $serviceId,
-                'type'          => 'configoptions',
-                'configoptions' => array((int)$optionId => 1),
-                'paymentmethod' => (string)Capsule::table('tblhosting')->where('id', $serviceId)->value('paymentmethod'),
-            ));
+            // In the client area WHMCS refuses the order (it redirects to upgrade.php) unless the
+            // product allows configurable option upgrades, so they are allowed for this call only.
+            // WHMCS may exit() during the call, which skips finally, hence the shutdown function too.
+            $service = Capsule::table('tblhosting')->where('id', $serviceId)->first(array('packageid', 'paymentmethod'));
+            $restore = function () {};
+            if (!Capsule::table('tblproducts')->where('id', $service->packageid)->value('configoptionsupgrade'))
+            {
+                Capsule::table('tblproducts')->where('id', $service->packageid)->update(array('configoptionsupgrade' => 1));
+                $restore = function () use ($service) {
+                    static $done = false;
+                    if (!$done)
+                    {
+                        $done = true;
+                        Capsule::table('tblproducts')->where('id', $service->packageid)->update(array('configoptionsupgrade' => 0));
+                    }
+                };
+                register_shutdown_function($restore);
+            }
+            try
+            {
+                $result = localAPI('UpgradeProduct', array(
+                    'serviceid'     => $serviceId,
+                    'type'          => 'configoptions',
+                    'configoptions' => array((int)$optionId => 1),
+                    'paymentmethod' => (string)$service->paymentmethod,
+                ));
+            }
+            finally
+            {
+                $restore();
+            }
             if (!isset($result['result']) || $result['result'] !== 'success')
             {
                 ActivityHelper::log($serviceId, $this->actor, 'backup_order', false, isset($result['message']) ? $result['message'] : null);
