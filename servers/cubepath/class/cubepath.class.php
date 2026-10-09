@@ -466,7 +466,8 @@ class Cubepath
 
     /**
      * Service password to use as the VPS root password. The API requires at
-     * least 8 characters; a stronger one is generated and saved if needed.
+     * least 8 characters with an uppercase letter, a lowercase letter and a
+     * number; a stronger one is generated and saved if needed.
      *
      * @return string
      */
@@ -474,15 +475,49 @@ class Cubepath
     {
         $password = isset($this->params['password']) ? (string)$this->params['password'] : '';
 
-        if (strlen($password) < 12)
+        if (strlen($password) < 12 || !preg_match('/[A-Z]/', $password)
+            || !preg_match('/[a-z]/', $password) || !preg_match('/\d/', $password))
         {
-            $password = bin2hex(random_bytes(12));
+            $password = self::generatePassword(16);
             Capsule::table('tblhosting')
                 ->where('id', $this->params['serviceid'])
                 ->update(array('password' => encrypt($password)));
         }
 
         return $password;
+    }
+
+    /**
+     * Random password with at least one uppercase letter, lowercase letter and number.
+     *
+     * @param int $length
+     * @return string
+     */
+    protected static function generatePassword($length)
+    {
+        $sets = array('ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789');
+        $all = implode('', $sets);
+
+        $chars = array();
+        foreach ($sets as $set)
+        {
+            $chars[] = $set[random_int(0, strlen($set) - 1)];
+        }
+        while (count($chars) < $length)
+        {
+            $chars[] = $all[random_int(0, strlen($all) - 1)];
+        }
+
+        // Fisher-Yates with random_int, shuffle() is not cryptographically secure.
+        for ($i = count($chars) - 1; $i > 0; $i--)
+        {
+            $j = random_int(0, $i);
+            $tmp = $chars[$i];
+            $chars[$i] = $chars[$j];
+            $chars[$j] = $tmp;
+        }
+
+        return implode('', $chars);
     }
 
     /**
