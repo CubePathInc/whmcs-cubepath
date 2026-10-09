@@ -133,6 +133,7 @@ class Products
 
         self::ensureCustomFields($productId);
         self::syncConfigurableOptions($productId, $catalog);
+        WelcomeEmail::assign($productId);
 
         return $productId;
     }
