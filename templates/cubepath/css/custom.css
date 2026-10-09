@@ -401,10 +401,6 @@ body.cp-body {
     text-align: center;
 }
 
-.cp-return-admin {
-    margin-left: 6px;
-}
-
 .cp-content {
     flex: 1;
     padding: 32px;
