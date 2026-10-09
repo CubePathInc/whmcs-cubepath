@@ -143,6 +143,7 @@ if (!class_exists('PanelController'))
                 'backups.restore'  => 'restoreBackup',
                 'backups.delete'   => 'deleteBackup',
                 'backups.settings' => 'backupSettings',
+                'backups.order'    => 'orderBackups',
                 'isos'             => 'isos',
                 'iso.mount'        => 'mountIso',
                 'iso.unmount'      => 'unmountIso',
@@ -766,9 +767,6 @@ if (!class_exists('PanelController'))
                 'backups'  => $backups,
                 'total'    => isset($list['total']) ? (int)$list['total'] : count($backups),
                 'locked'   => $this->backupsLocked(),
-                'upgradeUrl' => $this->actor === self::ACTOR_CLIENT
-                    ? CubepathHelper::systemUrl() . 'upgrade.php?type=configoptions&id=' . (int)$this->params['serviceid']
-                    : null,
                 'settings' => array(
                     'enabled'        => !empty($settings['enabled']),
                     'schedule_hour'  => isset($settings['schedule_hour']) ? (int)$settings['schedule_hour'] : 3,
@@ -832,11 +830,76 @@ if (!class_exists('PanelController'))
             return $this->actor === self::ACTOR_CLIENT && CubepathHelper::backupsPurchased((int)$this->params['serviceid']) === false;
         }
 
+        /**
+         * Order the backups option for this service alone. WHMCS's upgrade
+         * page would also let the client change the location, image and
+         * network, which only take effect on create, so the products leave
+         * it off and this places the upgrade order instead. Once its invoice
+         * is paid WHMCS runs ChangePackage, which turns backups on.
+         *
+         * @return array invoiceUrl: the invoice to pay, or null when nothing is due
+         */
+        protected function orderBackups()
+        {
+            if (!$this->backupsLocked())
+            {
+                throw new PanelException('Automatic backups are already included in this service.');
+            }
+
+            $serviceId = (int)$this->params['serviceid'];
+
+            // An order placed before and not paid yet: send the client to its invoice.
+            $pending = Capsule::table('tblupgrades as u')
+                ->join('tblorders as o', 'o.id', '=', 'u.orderid')
+                ->join('tblinvoices as i', 'i.id', '=', 'o.invoiceid')
+                ->where('u.relid', $serviceId)
+                ->where('u.type', 'configoptions')
+                ->where('u.paid', 'N')
+                ->where('i.status', 'Unpaid')
+                ->value('i.id');
+            if ($pending)
+            {
+                return array('invoiceUrl' => $this->invoiceUrl($pending));
+            }
+
+            $optionId = Capsule::table('tblhosting as h')
+                ->join('tblproductconfiglinks as l', 'l.pid', '=', 'h.packageid')
+                ->join('tblproductconfigoptions as o', 'o.gid', '=', 'l.gid')
+                ->where('h.id', $serviceId)
+                ->where('o.optionname', 'LIKE', 'backups|%')
+                ->value('o.id');
+            if (!$optionId)
+            {
+                throw new PanelException('Automatic backups are not sold for this product.');
+            }
+
+            $result = localAPI('UpgradeProduct', array(
+                'serviceid'     => $serviceId,
+                'type'          => 'configoptions',
+                'configoptions' => array((int)$optionId => 1),
+                'paymentmethod' => (string)Capsule::table('tblhosting')->where('id', $serviceId)->value('paymentmethod'),
+            ));
+            if (!isset($result['result']) || $result['result'] !== 'success')
+            {
+                ActivityHelper::log($serviceId, $this->actor, 'backup_order', false, isset($result['message']) ? $result['message'] : null);
+                throw new PanelException('The backups could not be ordered. Please contact support.');
+            }
+            ActivityHelper::log($serviceId, $this->actor, 'backup_order', true, 'order #' . (int)$result['orderid']);
+
+            // Nothing due (credit, or a free option): WHMCS has already applied it.
+            return array('invoiceUrl' => !empty($result['invoiceid']) ? $this->invoiceUrl($result['invoiceid']) : null);
+        }
+
+        protected function invoiceUrl($invoiceId)
+        {
+            return CubepathHelper::systemUrl() . 'viewinvoice.php?id=' . (int)$invoiceId;
+        }
+
         protected function backupSettings(array $data)
         {
             if (!empty($data['enabled']) && $this->backupsLocked())
             {
-                throw new PanelException('Automatic backups are not included in this service. Order them from Upgrade options.');
+                throw new PanelException('Automatic backups are not included in this service. Add them first.');
             }
 
             $settings = array(
