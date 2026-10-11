@@ -22,7 +22,7 @@ if (!defined('WHMCS'))
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-defined('CUBEPATH_ADDON_VERSION') || define('CUBEPATH_ADDON_VERSION', '1.0.1');
+defined('CUBEPATH_ADDON_VERSION') || define('CUBEPATH_ADDON_VERSION', '1.0.2');
 
 function cubepath_config()
 {
