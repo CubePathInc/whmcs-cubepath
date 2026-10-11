@@ -190,6 +190,21 @@ export interface AddonDashboard {
   templates: number;
   products: number;
   services: number;
+  tickets: { total: number; items: AwaitingTicket[] };
+}
+
+/** Ticket waiting for a staff reply, from a client with a CubePath VPS. */
+export interface AwaitingTicket {
+  id: number;
+  tid: string;
+  title: string;
+  status: string;
+  /** Status color set in Support > Ticket Statuses. */
+  color: string;
+  priority: string;
+  lastReply: string;
+  client: { id: number; name: string };
+  service: { id: number; label: string } | null;
 }
 
 export interface CatalogPlan {

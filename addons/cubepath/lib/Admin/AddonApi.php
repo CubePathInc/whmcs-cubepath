@@ -134,7 +134,68 @@ class AddonApi
                 ->where('p.servertype', Products::SERVER_MODULE)
                 ->whereIn('h.domainstatus', PanelApi::LISTED_STATUSES)
                 ->count(),
+            'tickets'     => $this->awaitingTickets(),
         );
+    }
+
+    /**
+     * Tickets waiting for a staff reply from clients with a CubePath VPS,
+     * the longest waiting first.
+     */
+    private function awaitingTickets()
+    {
+        $colors = Capsule::table('tblticketstatuses')->where('showawaiting', 1)->pluck('color', 'title')->all();
+        $query = Capsule::table('tbltickets as t')
+            ->join('tblclients as c', 'c.id', '=', 't.userid')
+            ->whereIn('t.status', array_keys($colors))
+            ->where('t.merged_ticket_id', 0)
+            ->whereIn('t.userid', function ($q) {
+                $q->select('h.userid')
+                    ->from('tblhosting as h')
+                    ->join('tblproducts as p', 'p.id', '=', 'h.packageid')
+                    ->where('p.servertype', Products::SERVER_MODULE)
+                    ->whereIn('h.domainstatus', PanelApi::LISTED_STATUSES);
+            });
+
+        $total = (clone $query)->count();
+        $rows = $query->orderBy('t.lastreply')->limit(8)->get(array(
+            't.id', 't.tid', 't.title', 't.status', 't.urgency', 't.lastreply', 't.service',
+            'c.id as clientId', 'c.firstname', 'c.lastname', 'c.companyname',
+        ));
+
+        $serviceIds = array();
+        foreach ($rows as $row)
+        {
+            if (preg_match('/^S(\d+)$/', (string)$row->service, $m))
+            {
+                $serviceIds[] = (int)$m[1];
+            }
+        }
+        $hostnames = $serviceIds
+            ? Capsule::table('tblhosting')->whereIn('id', $serviceIds)->pluck('domain', 'id')->all()
+            : array();
+
+        $items = array();
+        foreach ($rows as $row)
+        {
+            $serviceId = preg_match('/^S(\d+)$/', (string)$row->service, $m) ? (int)$m[1] : 0;
+            $name = trim($row->firstname . ' ' . $row->lastname);
+            $items[] = array(
+                'id'        => (int)$row->id,
+                'tid'       => (string)$row->tid,
+                'title'     => html_entity_decode((string)$row->title, ENT_QUOTES, 'UTF-8'),
+                'status'    => (string)$row->status,
+                'color'     => (string)$colors[$row->status],
+                'priority'  => (string)$row->urgency,
+                'lastReply' => (string)$row->lastreply,
+                'client'    => array('id' => (int)$row->clientId, 'name' => $name !== '' ? $name : (string)$row->companyname),
+                'service'   => isset($hostnames[$serviceId])
+                    ? array('id' => $serviceId, 'label' => (string)$hostnames[$serviceId])
+                    : null,
+            );
+        }
+
+        return array('total' => $total, 'items' => $items);
     }
 
     private function creator()
