@@ -13,8 +13,8 @@ WHMCS provisioning and addon module for [CubePath](https://cubepath.com). It aut
 | ![Store with the plans of a family](docs/screenshots/store.webp) | ![Location, image, network, backups and access options](docs/screenshots/order-configure.webp) |
 | **Client overview** | **Support ticket** |
 | ![Client area overview](docs/screenshots/client-overview.webp) | ![Ticket conversation with a staff reply](docs/screenshots/support-ticket.webp) |
-| **Product Creator (admin)** | |
-| ![Product Creator in the addon](docs/screenshots/admin-product-creator.webp) | |
+| **Addon dashboard (admin)** | **Product Creator (admin)** |
+| ![Addon dashboard with tickets awaiting reply](docs/screenshots/admin-dashboard.webp) | ![Product Creator in the addon](docs/screenshots/admin-product-creator.webp) |
 
 ## Requirements
 
