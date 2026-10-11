@@ -39,10 +39,19 @@ jobs:
 
       - name: Build archive
         id: build
-        run: echo "archive=$(bin/build-release.sh "$GITHUB_REF_NAME")" >> "$GITHUB_OUTPUT"
+        run: |
+          archive="$(bin/build-release.sh "$GITHUB_REF_NAME")"
+          # Unversioned copy so releases/latest/download/whmcs-cubepath.zip always points at the newest build.
+          cp "$archive" "$(dirname "$archive")/whmcs-cubepath.zip"
+          {
+            echo "files<<EOF"
+            echo "$archive"
+            echo "$(dirname "$archive")/whmcs-cubepath.zip"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.build.outputs.archive }}
+          files: ${{ steps.build.outputs.files }}
           generate_release_notes: true
