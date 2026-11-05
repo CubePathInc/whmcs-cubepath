@@ -455,28 +455,51 @@ if (!class_exists('CubepathHelper'))
         }
 
         /**
-         * Whether a service may use automatic backups. Products that do not
-         * sell backups (no visible backups option) leave them free as before.
+         * Query for the backups option of the product of a service.
          *
          * @param int $serviceId
-         * @return bool|null Null when backups are not sold for the product
+         * @return \Illuminate\Database\Query\Builder
          */
-        public static function backupsPurchased($serviceId)
+        private static function backupsOptionQuery($serviceId)
         {
-            $sold = Capsule::table('tblhosting as h')
+            return Capsule::table('tblhosting as h')
                 ->join('tblproductconfiglinks as l', 'l.pid', '=', 'h.packageid')
                 ->join('tblproductconfigoptions as o', 'o.gid', '=', 'l.gid')
                 ->where('h.id', $serviceId)
-                ->where('o.optionname', 'LIKE', 'backups|%')
-                ->where('o.hidden', 0)
-                ->exists();
+                ->where('o.optionname', 'LIKE', 'backups|%');
+        }
 
-            if (!$sold)
+        /**
+         * Whether a service may use automatic backups. The backups option stays
+         * on the product when the store stops selling them, only hidden, so a
+         * service without it has not bought them either. Products without the
+         * option at all (made by hand, outside the product creator) leave them
+         * free as before.
+         *
+         * @param int $serviceId
+         * @return bool|null Null when the product has no backups option
+         */
+        public static function backupsPurchased($serviceId)
+        {
+            if (!self::backupsOptionQuery($serviceId)->exists())
             {
                 return null;
             }
 
             return (int)self::getConfigurableOptionQty($serviceId, 'backups') > 0;
+        }
+
+        /**
+         * The backups option a client can still order for a service.
+         *
+         * @param int $serviceId
+         * @return int|null Null when the store does not sell backups for the product
+         */
+        public static function backupsOptionForSale($serviceId)
+        {
+            $optionId = self::backupsOptionQuery($serviceId)->where('o.hidden', 0)->value('o.id');
+
+            return $optionId ? (int)$optionId : null;
         }
 
         /**

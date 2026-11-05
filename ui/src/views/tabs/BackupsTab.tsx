@@ -91,9 +91,11 @@ export function BackupsTab() {
           {backups.data.locked && !settings.enabled && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted px-4 py-3 text-sm">
               <span>{t("backups.notIncluded")}</span>
-              <Button size="sm" variant="outline" onClick={() => setOrdering(true)}>
-                {t("backups.order")}
-              </Button>
+              {backups.data.orderable && (
+                <Button size="sm" variant="outline" onClick={() => setOrdering(true)}>
+                  {t("backups.order")}
+                </Button>
+              )}
             </div>
           )}
           <div className="grid gap-4 @sm:grid-cols-3">

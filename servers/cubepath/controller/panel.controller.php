@@ -764,10 +764,11 @@ if (!class_exists('PanelController'))
             }
 
             return array(
-                'backups'  => $backups,
-                'total'    => isset($list['total']) ? (int)$list['total'] : count($backups),
-                'locked'   => $this->backupsLocked(),
-                'settings' => array(
+                'backups'   => $backups,
+                'total'     => isset($list['total']) ? (int)$list['total'] : count($backups),
+                'locked'    => $this->backupsLocked(),
+                'orderable' => CubepathHelper::backupsOptionForSale((int)$this->params['serviceid']) !== null,
+                'settings'  => array(
                     'enabled'        => !empty($settings['enabled']),
                     'schedule_hour'  => isset($settings['schedule_hour']) ? (int)$settings['schedule_hour'] : 3,
                     'retention_days' => isset($settings['retention_days']) ? (int)$settings['retention_days'] : 7,
@@ -778,6 +779,11 @@ if (!class_exists('PanelController'))
 
         protected function createBackup(array $data)
         {
+            if ($this->backupsLocked())
+            {
+                throw new PanelException('Backups are not included in this service.');
+            }
+
             $notes = isset($data['notes']) ? mb_substr(trim((string)$data['notes']), 0, 200) : '';
 
             return $this->logged('backup_create', $notes !== '' ? $notes : null, function () use ($notes) {
@@ -822,8 +828,8 @@ if (!class_exists('PanelController'))
         }
 
         /**
-         * Whether the client may not turn automatic backups on because the
-         * product sells them and the service has not bought them.
+         * Whether the client may not use backups because the product has the
+         * backups option, on sale or hidden, and the service has not bought it.
          */
         protected function backupsLocked()
         {
@@ -862,12 +868,7 @@ if (!class_exists('PanelController'))
                 return array('invoiceUrl' => $this->invoiceUrl($pending));
             }
 
-            $optionId = Capsule::table('tblhosting as h')
-                ->join('tblproductconfiglinks as l', 'l.pid', '=', 'h.packageid')
-                ->join('tblproductconfigoptions as o', 'o.gid', '=', 'l.gid')
-                ->where('h.id', $serviceId)
-                ->where('o.optionname', 'LIKE', 'backups|%')
-                ->value('o.id');
+            $optionId = CubepathHelper::backupsOptionForSale($serviceId);
             if (!$optionId)
             {
                 throw new PanelException('Automatic backups are not sold for this product.');

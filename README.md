@@ -160,7 +160,7 @@ Besides the location and the image, **Addons > CubePath > Settings > Order form*
 |--------|----------------------|-------|
 | **SSH key** | A public key added to the VPS. It is created in your CubePath account and deleted when the service is terminated (retried by the daily cron while the VPS is being destroyed) | Free |
 | **Cloud-init** | A user data script run on the first boot | Free |
-| **Automatic backups** | Daily backups. Clients without them cannot turn backups on from their panel, and can add them with **Upgrade options** | A share of the product price, 20% by default (what CubePath charges) |
+| **Automatic backups** | Daily backups. Clients without them cannot use backups from their panel, and can add them with **Upgrade options** while the store sells them. Turning backups off in the store stops new ones, it does not make them free | A share of the product price, 20% by default (what CubePath charges) |
 | **IPv6 only** | The VPS is created without an IPv4 address | A monthly discount, $1.50 by default (what CubePath saves you) |
 
 Backups and network are configurable options; the SSH key and cloud-init are custom fields shown on the order form. Windows images take neither.

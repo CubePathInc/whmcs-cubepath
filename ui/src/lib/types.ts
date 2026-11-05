@@ -131,8 +131,10 @@ export interface BackupSettings {
 export interface Backups {
   backups: Backup[];
   total: number;
-  /** The product sells backups and this service has not bought them. */
+  /** The product has the backups option and this service has not bought it. */
   locked: boolean;
+  /** The store still sells backups for this product. */
+  orderable: boolean;
   settings: BackupSettings;
 }
 
