@@ -9,7 +9,8 @@ use WHMCS\Database\Capsule;
 /**
  * JSON endpoint of the admin panels (addonmodules.php?module=cubepath&cpapi=1):
  * the service panel on the admin service page and the addon pages.
- * WHMCS has already checked that the admin may use this addon.
+ * WHMCS has already checked that the admin may use this addon; AdminPermissions
+ * then decides each action by the admin's role.
  */
 class PanelApi
 {
@@ -35,6 +36,11 @@ class PanelApi
         // WHMCS runs htmlspecialchars() over $_POST, which breaks the JSON quotes.
         $data = json_decode(htmlspecialchars_decode(isset($post['cpdata']) ? (string)$post['cpdata'] : '{}', ENT_QUOTES), true);
         $data = is_array($data) ? $data : array();
+
+        if (!AdminPermissions::allows($action))
+        {
+            \PanelController::sendJson(array('ok' => false, 'error' => 'Your administrator role does not have permission for this action.'));
+        }
 
         try
         {

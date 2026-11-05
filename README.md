@@ -119,6 +119,16 @@ Firewall groups, SSH keys and DNS zones belong to the whole CubePath organizatio
 
 There is no console: CubePath only opens VNC sessions for dashboard logins, not for API tokens.
 
+Access to the addon does not open everything in the admin panel. Each action also needs a permission of the administrator's role:
+
+| Permission | Actions |
+|------------|---------|
+| Access to the addon | Dashboard, products, product creator and store settings, read only |
+| View Clients Products/Services | Server list and the read-only tabs of a service |
+| Edit Clients Products/Services | Reveal the root password |
+| Perform Server Operations (Perform Module Command Operations in the WHMCS documentation) | Power, suspend and unsuspend, reinstall, root password and server name, reverse DNS, firewall, backups, ISOs |
+| Configure Servers | API token and default project, creating, syncing and deleting products, store settings, client area |
+
 The panel is a React app built from `ui/` into `servers/cubepath/assets/dist/app.js`. It renders inside a shadow root, so it looks the same with any WHMCS theme and does not affect the theme's styles. The admin panel and the **Servers** page call the addon (`addonmodules.php?module=cubepath&cpapi=1`), so administrators need access to the CubePath addon.
 
 ## Creating Products
@@ -252,6 +262,7 @@ ui/                              # Panel source: React, Tailwind, recharts
 - Check file permissions (readable by web server)
 - Ensure `modules/addons/cubepath/vendor/` and `modules/servers/cubepath/assets/dist/app.js` exist (both ship in the release zip; build them as in **Installing from source** otherwise)
 - If the admin panel says the session expired, check that your admin role has access to the CubePath addon
+- If the admin panel says your role does not have permission, add the permission of that action to the role (see **Client Area and Admin Panel**)
 
 ## Development
 
