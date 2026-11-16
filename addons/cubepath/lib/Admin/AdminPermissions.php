@@ -28,6 +28,12 @@ class AdminPermissions
      */
     const OPERATE_SERVERS = array('Perform Server Operations', 'Perform Module Command Operations');
 
+    /** See the list of support tickets at all. */
+    const LIST_TICKETS = array('List Support Tickets');
+
+    /** See the tickets of every department, not only of the assigned ones. */
+    const ALL_TICKETS = array('Access All Tickets Directly');
+
     /** Change what applies to the whole module: API token, products, store, client area. */
     const CONFIGURE_MODULE = array('Configure Servers');
 
@@ -100,6 +106,17 @@ class AdminPermissions
             return true;
         }
 
+        return self::hasAny($permissions);
+    }
+
+    /**
+     * Whether the role of the signed-in administrator has one of the permissions.
+     *
+     * @param string[] $permissions
+     * @return bool
+     */
+    public static function hasAny(array $permissions)
+    {
         if (!function_exists('checkPermission'))
         {
             return false;

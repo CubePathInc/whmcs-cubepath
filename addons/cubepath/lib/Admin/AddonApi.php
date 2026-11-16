@@ -141,9 +141,28 @@ class AddonApi
     /**
      * Tickets waiting for a staff reply from clients with a CubePath VPS,
      * the longest waiting first.
+     *
+     * Only the tickets WHMCS itself would list for this administrator: none
+     * without "List Support Tickets", and those of the assigned departments
+     * unless the role has "Access All Tickets Directly".
      */
     private function awaitingTickets()
     {
+        if (!AdminPermissions::hasAny(AdminPermissions::LIST_TICKETS))
+        {
+            return array('total' => 0, 'items' => array());
+        }
+
+        $departments = null;
+        if (!AdminPermissions::hasAny(AdminPermissions::ALL_TICKETS))
+        {
+            $departments = $this->assignedDepartments();
+            if (!$departments)
+            {
+                return array('total' => 0, 'items' => array());
+            }
+        }
+
         $colors = Capsule::table('tblticketstatuses')->where('showawaiting', 1)->pluck('color', 'title')->all();
         $query = Capsule::table('tbltickets as t')
             ->join('tblclients as c', 'c.id', '=', 't.userid')
@@ -156,6 +175,10 @@ class AddonApi
                     ->where('p.servertype', Products::SERVER_MODULE)
                     ->whereIn('h.domainstatus', PanelApi::LISTED_STATUSES);
             });
+        if ($departments !== null)
+        {
+            $query->whereIn('t.did', $departments);
+        }
 
         $total = (clone $query)->count();
         $rows = $query->orderBy('t.lastreply')->limit(8)->get(array(
@@ -196,6 +219,24 @@ class AddonApi
         }
 
         return array('total' => $total, 'items' => $items);
+    }
+
+    /**
+     * The support departments the signed-in administrator is assigned to.
+     *
+     * @return int[]
+     */
+    private function assignedDepartments()
+    {
+        $adminId = isset($_SESSION['adminid']) ? (int)$_SESSION['adminid'] : 0;
+        if ($adminId <= 0)
+        {
+            return array();
+        }
+
+        $assigned = (string)Capsule::table('tbladmins')->where('id', $adminId)->value('supportdepts');
+
+        return array_values(array_filter(array_map('intval', explode(',', $assigned))));
     }
 
     private function creator()
